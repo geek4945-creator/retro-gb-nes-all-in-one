@@ -19,7 +19,11 @@ main { padding: 0 16px; max-width: 980px; margin: 0 auto; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; transition: transform .12s; outline: none; }
 .card:active { transform: scale(.97); } .card:focus-visible { border-color: var(--accent); }
-.art { position: relative; aspect-ratio: 1 / 1; display: grid; place-items: center; }
+.art { position: relative; aspect-ratio: 3 / 4; display: grid; place-items: center; }
+.searchrow { display: flex; gap: 8px; } .searchrow #search { flex: 1; min-width: 0; } #btn-art { flex: none; color: var(--text); }
+.ph-title { padding: 10px; text-align: center; font-weight: 800; font-size: 15px; line-height: 1.2; color: rgba(255,255,255,.92); text-shadow: 0 2px 8px rgba(0,0,0,.45); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; }
+.cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0b0c10; }
+.art.has-img .badge, .art.has-img .resume { z-index: 1; }
 .initials { font-size: 38px; font-weight: 800; color: rgba(255,255,255,.85); text-shadow: 0 2px 8px rgba(0,0,0,.35); }
 .badge { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(0,0,0,.45); }
 .resume { position: absolute; bottom: 8px; right: 8px; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--accent); }
@@ -40,3 +44,23 @@ dialog.sheet h3 { margin: 0 0 4px; font-size: 18px; word-break: break-word; }
 .toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 90px); background: #2b2f44; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; text-align: center; }
 .drop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(124,92,255,.35); font-size: 22px; font-weight: 700; border: 3px dashed #fff; }
 [hidden] { display: none !important; }
+
+dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%; max-height: 100%; background: var(--bg); color: var(--text); }
+.cv-main { padding: calc(var(--sat) + 14px) 14px calc(var(--sab) + 20px); max-width: 720px; margin: 0 auto; }
+.cv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .cv-head h3 { margin: 0; }
+.cv-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+.cv-row input[type=search], .cv-row input[type=url], .cv-keys input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 16px; width: 100%; }
+.btn { padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-size: 15px; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); } .btn.ghost { background: none; color: var(--muted); }
+.cv-status { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.cv-src { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+.cv-src.ok { color: #7be0a0; border-color: #2f6b49; } .cv-src.err { color: #ff8a98; border-color: #7a2f3a; } .cv-src.none, .cv-src.off { color: var(--muted); }
+.cv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.cv-tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0; overflow: hidden; color: var(--text); text-align: left; }
+.cv-tile img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: contain; background: #0b0c10; }
+.cv-cap { display: block; font-size: 11px; padding: 4px 6px; color: var(--muted); height: 3.3em; overflow: hidden; }
+.cv-keys { margin-top: 16px; } .cv-keys summary { color: var(--muted); cursor: pointer; }
+.cv-edit { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 12px; }
+.cv-canvas { width: 240px; height: 320px; border-radius: 10px; border: 1px solid var(--line); touch-action: none; background: #0b0c10; }
+.cv-zoom { display: flex; gap: 10px; align-items: center; width: 240px; } .cv-zoom input { flex: 1; }
+.cv-remote { max-width: 240px; max-height: 320px; border-radius: 10px; }

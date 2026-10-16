@@ -1,6 +1,6 @@
 // Tiny IndexedDB wrapper: ROM library + auto-resume states. ROMs are stored as ArrayBuffers
 // (more reliable than Blobs in older iOS Safari builds).
-const DB_NAME = 'retro-pocket', VERSION = 1;
+const DB_NAME = 'retro-pocket', VERSION = 2;
 let dbp;
 function open() {
   if (dbp) return dbp;
@@ -10,6 +10,8 @@ function open() {
       const db = req.result;
       if (!db.objectStoreNames.contains('roms')) db.createObjectStore('roms', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('art')) db.createObjectStore('art', { keyPath: 'id' });     // cover art per ROM id
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });   // cached thumbnail name indexes
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -33,6 +35,12 @@ export const deleteRom = (id) => tx('roms', 'readwrite', (s) => s.delete(id));
 export const putState = (st) => tx('states', 'readwrite', (s) => s.put(st));
 export const getState = (id) => tx('states', 'readonly', (s) => s.get(id));
 export const deleteState = (id) => tx('states', 'readwrite', (s) => s.delete(id));
+export const putArt = (a) => tx('art', 'readwrite', (s) => s.put(a));
+export const getArt = (id) => tx('art', 'readonly', (s) => s.get(id));
+export const allArt = () => tx('art', 'readonly', (s) => s.getAll());
+export const deleteArt = (id) => tx('art', 'readwrite', (s) => s.delete(id));
+export const putMeta = (m) => tx('meta', 'readwrite', (s) => s.put(m));
+export const getMeta = (id) => tx('meta', 'readonly', (s) => s.get(id));
 export const allStateIds = () => tx('states', 'readonly', (s) => s.getAllKeys());
 
 export async function sha256Hex(buf) {

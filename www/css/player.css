@@ -5,3 +5,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 #status { position: fixed; z-index: 9; left: 0; right: 0; top: 45%; text-align: center; color: #cfd0e6; font: 15px system-ui, -apple-system, sans-serif; padding: 0 24px; pointer-events: none; }
 #status.err { color: #ff7b8a; pointer-events: auto; }
 #status[hidden] { display: none; }
+#banner { position: fixed; z-index: 11; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 48px); background: #2b2f44; color: #fff; padding: 10px 14px; border-radius: 12px; font: 14px system-ui, -apple-system, sans-serif; text-align: center; }
+#crash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(8,8,14,.94); padding: 20px; touch-action: auto; }
+#crash[hidden], #banner[hidden] { display: none; }
+.crash-box { width: min(100%, 420px); color: #eceef7; font-family: system-ui, -apple-system, sans-serif; }
+.crash-box h2 { margin: 0 0 6px; color: #ff7b8a; } .crash-box p { margin: 6px 0 14px; }
+.crash-box .detail { font: 12px ui-monospace, Menlo, monospace; color: #8c91a8; word-break: break-word; }
+.crash-box button { display: block; width: 100%; margin-top: 10px; padding: 14px; border-radius: 12px; border: 1px solid #2a2e40; background: #1f2230; color: #fff; font-size: 16px; font-weight: 600; }
+.crash-box button:first-of-type:not([hidden]), .crash-box #crash-restart { background: #7c5cff; border-color: #7c5cff; }
+.crash-box #crash-resume:not([hidden]) ~ #crash-restart { background: #1f2230; border-color: #2a2e40; }
+.crash-box .ghost { background: none; color: #8c91a8; }

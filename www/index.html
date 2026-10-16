@@ -5,7 +5,7 @@
   <title>Retro Pocket</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#0e0f14">
-  <meta name="description" content="All-in-one Game Boy, Game Boy Color, Game Boy Advance, NES and SNES emulator. Bring your own ROMs.">
+  <meta name="description" content="All-in-one Game Boy, Game Boy Color, Game Boy Advance, NES, SNES and Nintendo DS emulator. Bring your own ROMs.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -28,7 +28,7 @@
     </div>
 
     <div class="tools">
-      <input id="search" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games">
+      <div class="searchrow"><input id="search" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games"><button id="btn-art" class="chip" type="button" hidden>🖼 Get art</button></div>
       <div id="chips" class="chips" role="tablist"></div>
     </div>
 
@@ -37,7 +37,7 @@
     <section id="empty" class="empty" hidden>
       <div class="empty-art">🎮</div>
       <h2>No games yet</h2>
-      <p>Add your own ROM files (<code>.gb .gbc .gba .nes .sfc .smc</code>) and they'll be saved on this device. Nothing is uploaded anywhere.</p>
+      <p>Add your own ROM files (<code>.gb .gbc .gba .nes .sfc .smc .nds</code>) and they'll be saved on this device. Nothing is uploaded anywhere.</p>
       <p class="muted">Tip: files from the Files app, iCloud Drive or your downloads folder work.</p>
     </section>
   </main>
@@ -47,6 +47,7 @@
 
   <dialog id="sheet" class="sheet"></dialog>
   <dialog id="settings" class="sheet"></dialog>
+  <dialog id="cover" class="full"></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <div id="drop" class="drop" hidden>Drop ROMs to add them</div>
 

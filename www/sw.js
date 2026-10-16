@@ -1,11 +1,11 @@
 // Offline shell + runtime cache for the EmulatorJS CDN (loader, UI and cores are cached after first use).
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `retro-pocket-shell-${VERSION}`;
 const RUNTIME = `retro-pocket-ejs-${VERSION}`;
 const SHELL_FILES = [
   './', 'index.html', 'player.html', 'manifest.webmanifest',
   'css/app.css', 'css/player.css',
-  'js/app.js', 'js/cores.js', 'js/db.js', 'js/player.js',
+  'js/app.js', 'js/art.js', 'js/cover.js', 'js/cores.js', 'js/db.js', 'js/player.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
 ];
 

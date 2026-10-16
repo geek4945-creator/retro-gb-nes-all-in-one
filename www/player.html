@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/player.css">
 </head>
@@ -15,6 +16,18 @@
   <div id="game"></div>
   <button id="back" aria-label="Back to library">‹ Library</button>
   <div id="status">Loading…</div>
+  <div id="banner" hidden></div>
+  <div id="crash" hidden role="alertdialog" aria-labelledby="crash-title">
+    <div class="crash-box">
+      <h2 id="crash-title">Game crashed</h2>
+      <p id="crash-msg"></p>
+      <p id="crash-detail" class="detail"></p>
+      <button id="crash-resume" hidden>Resume from last auto-save</button>
+      <button id="crash-restart">Restart game</button>
+      <button id="crash-alt" hidden>Try another core</button>
+      <button id="crash-lib" class="ghost">Back to library</button>
+    </div>
+  </div>
   <script type="module" src="js/player.js"></script>
 </body>
 </html>

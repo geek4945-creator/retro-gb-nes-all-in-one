@@ -13,7 +13,7 @@ let failed = 0;
 const step = async (n, f) => { try { const v = await f(); console.log('PASS', n, v ?? ''); } catch (e) { failed++; console.log('FAIL', n, '->', e.message); } };
 const assert = (c, m) => { if (!c) throw new Error(m || 'assertion failed'); };
 await sleep(800);
-const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME || '/usr/bin/google-chrome', headless: 'new', protocolTimeout: 300000, timeout: 120000, args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -24,7 +24,7 @@ try {
   await step('empty state visible', async () => assert(await page.$eval('#empty', (e) => !e.hidden)));
   await step('service worker registers + shell cached', async () => {
     await page.evaluate(() => navigator.serviceWorker.ready); await sleep(800);
-    const n = await page.evaluate(async () => (await (await caches.open('retro-pocket-shell-v1')).keys()).length);
+    const n = await page.evaluate(async () => (await (await caches.open('retro-pocket-shell-v2')).keys()).length);
     assert(n >= 10, 'cached ' + n); return n + ' files';
   });
   await step('manifest + apple meta', async () => {
@@ -63,7 +63,7 @@ try {
     await page.click('.ejs_start_button');
     await page.waitForFunction(() => window.EJS_emulator && window.EJS_emulator.started, { timeout: 90000 });
   });
-  await step('NES ROM auto-detects fceumm and boots', async () => {
+  await step('NES ROM auto-detects nestopia (new default) and boots', async () => {
     await page.goto(base + 'index.html', { waitUntil: 'networkidle0' });
     await (await page.$('#file-input')).uploadFile('tests/fixtures/nes-test.nes');
     await page.waitForFunction(() => document.querySelectorAll('.card').length === 2, { timeout: 5000 });
@@ -71,7 +71,7 @@ try {
     await page.waitForSelector('.ejs_start_button', { visible: true, timeout: 90000 });
     await page.click('.ejs_start_button');
     await page.waitForFunction(() => window.EJS_emulator && window.EJS_emulator.started, { timeout: 90000 });
-    const core = await page.evaluate(() => window.EJS_emulator.getCore()); assert(core === 'fceumm', core); return core;
+    const core = await page.evaluate(() => window.EJS_emulator.getCore()); assert(core === 'nestopia', core); return core;
   });
   await step('no uncaught JS errors', async () => assert(!errs.length, errs.join(' | ')));
 } finally { await browser.close(); srv.kill(); }

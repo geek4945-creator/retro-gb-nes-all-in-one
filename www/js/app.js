@@ -1,5 +1,7 @@
 import { SYSTEMS, CORE_LABELS, systemFor, titleFrom, defaultCore, loadSettings, saveSettings, extOf } from './cores.js';
 import * as db from './db.js';
+import { fetchArt, artUrl } from './art.js';
+import { openCoverPicker } from './cover.js';
 
 const $ = (s) => document.querySelector(s);
 const el = (tag, props = {}, ...kids) => {
@@ -8,7 +10,7 @@ const el = (tag, props = {}, ...kids) => {
   return e;
 };
 const MAX_ROM = 64 * 1024 * 1024;
-let roms = [], resumable = new Set(), filter = 'all', query = '', settings = loadSettings();
+let roms = [], artMap = new Map(), artUrls = new Map(), resumable = new Set(), filter = 'all', query = '', settings = loadSettings();
 
 /* ---------- toast ---------- */
 let toastTimer;
@@ -21,6 +23,7 @@ function toast(msg) {
 async function refresh() {
   roms = (await db.allRoms()).sort((a, b) => (b.lastPlayed || b.added) - (a.lastPlayed || a.added));
   resumable = new Set(await db.allStateIds());
+  artMap = new Map((await db.allArt().catch(() => [])).map((a) => [a.id, a]));
   render();
 }
 
@@ -40,6 +43,10 @@ function render() {
 
   const q = query.trim().toLowerCase();
   const list = roms.filter((r) => (filter === 'all' || r.system === filter) && (!q || r.title.toLowerCase().includes(q)));
+  for (const u of artUrls.values()) if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+  artUrls.clear();
+  const missing = roms.filter((r) => !artMap.has(r.id) || artMap.get(r.id).status === 'none').length;
+  const ab = $('#btn-art'); ab.hidden = !missing; ab.textContent = `🖼 Get art (${missing})`;
   const grid = $('#library'); grid.replaceChildren();
   $('#empty').hidden = roms.length !== 0;
   for (const r of list) grid.append(card(r));
@@ -52,9 +59,16 @@ function card(r) {
   const sys = SYSTEMS[r.system] || SYSTEMS.gb;
   const h = hue(r.title);
   const art = el('div', { className: 'art' },
-    el('span', { className: 'initials', textContent: r.title.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?' }),
+    el('span', { className: 'ph-title', textContent: r.title }),     // generated placeholder cover: system colour + title
     el('span', { className: 'badge', textContent: sys.short }));
-  art.style.background = `linear-gradient(145deg, hsl(${h} 55% 38%), hsl(${(h + 50) % 360} 60% 22%))`;
+  art.style.background = `linear-gradient(150deg, ${sys.color}, hsl(${h} 45% 18%) 75%)`;
+  const url = artUrl(artMap.get(r.id));
+  if (url) {
+    artUrls.set(r.id, url);
+    const img = el('img', { className: 'cover', src: url, alt: '', loading: 'lazy', decoding: 'async', referrerPolicy: 'no-referrer' });
+    img.onerror = () => { img.remove(); art.classList.remove('has-img'); };   // offline remote art etc. -> generated placeholder stays visible
+    art.classList.add('has-img'); art.prepend(img);
+  }
   if (resumable.has(r.id)) art.append(el('span', { className: 'resume', textContent: '▶ Resume' }));
   const c = el('div', { className: 'card', role: 'button', tabIndex: 0 }, art,
     el('div', { className: 'meta' }, el('span', { className: 'name', textContent: r.title }),
@@ -68,6 +82,29 @@ function card(r) {
 function play(r, resume) {
   location.href = `player.html?id=${encodeURIComponent(r.id)}${resume ? '&resume=1' : ''}`;
 }
+
+/* ---------- box art ---------- */
+let artBusy = false;
+async function fetchMissingArt(list, { quiet = false, force = false } = {}) {
+  if (artBusy) return; artBusy = true;
+  try {
+    let done = 0, got = 0;
+    for (const r of list) {
+      const prev = artMap.get(r.id);
+      if (!force && prev && prev.status !== 'none') continue;
+      if (prev && prev.custom && !force) continue;
+      if (!quiet || list.length > 1) toast(`Fetching cover art… ${done + 1}/${list.length}`);
+      const rec = await fetchArt(r, { force });
+      artMap.set(r.id, rec); if (rec.status !== 'none') got++; done++;
+      render();
+    }
+    if (!quiet || got) toast(done ? `Cover art: found ${got} of ${done}` : 'Nothing to fetch');
+  } finally { artBusy = false; }
+}
+$('#btn-art').onclick = () => {
+  if (!navigator.onLine) return toast('You are offline — art needs internet once.');
+  fetchMissingArt(roms.filter((r) => !artMap.has(r.id) || artMap.get(r.id).status === 'none'));
+};
 
 /* ---------- adding ROMs ---------- */
 function askSystem(filename) {
@@ -83,7 +120,7 @@ function askSystem(filename) {
 }
 
 async function addFiles(files) {
-  let added = 0, dup = 0, skipped = 0;
+  let added = 0, dup = 0, skipped = 0; const newRoms = [];
   for (const f of files) {
     try {
       if (f.size > MAX_ROM) { skipped++; continue; }
@@ -91,7 +128,7 @@ async function addFiles(files) {
       if (!system) {
         system = await askSystem(f.name);
         if (!system) { skipped++; continue; }
-        const ext = { gb: 'gb', gbc: 'gbc', gba: 'gba', nes: 'nes', snes: 'sfc' }[system];
+        const ext = { gb: 'gb', gbc: 'gbc', gba: 'gba', nes: 'nes', snes: 'sfc', nds: 'nds' }[system];
         if (extOf(f.name) !== 'zip') fname = f.name.replace(/\.[^.]*$/, '') + '.' + ext;
       }
       const data = await f.arrayBuffer();
@@ -101,7 +138,7 @@ async function addFiles(files) {
         id, file: fname, title: titleFrom(f.name), system, core: defaultCore(system, settings),
         size: data.byteLength, added: Date.now(), lastPlayed: 0, data,
       });
-      added++;
+      added++; newRoms.push(id);
     } catch (e) {
       console.error(e); skipped++;
       if (e && e.name === 'QuotaExceededError') { toast('Storage is full — free up space and try again.'); break; }
@@ -113,6 +150,7 @@ async function addFiles(files) {
   if (dup) parts.push(`${dup} already in library`);
   if (skipped) parts.push(`${skipped} skipped`);
   if (parts.length) toast(parts.join(' · '));
+  if (newRoms.length) fetchMissingArt(roms.filter((r) => newRoms.includes(r.id)), { quiet: true });
 }
 
 $('#file-input').addEventListener('change', async (e) => {
@@ -132,7 +170,7 @@ addEventListener('drop', async (e) => {
 function openSheet(r) {
   const d = $('#sheet'); d.onclose = null;
   const sys = SYSTEMS[r.system];
-  const coreSel = el('select', { onchange: async () => { r.core = coreSel.value; await db.putRom(r); toast('Core set to ' + r.core); } },
+  const coreSel = el('select', { onchange: async () => { r.core = coreSel.value; await db.putRom(r); await db.deleteState(r.id).catch(() => {}); resumable.delete(r.id); toast('Core set to ' + r.core + ' (auto-resume snapshot cleared)'); } },
     ...sys.cores.map((c) => el('option', { value: c, textContent: CORE_LABELS[c] || c, selected: c === r.core })));
   const rows = [
     el('h3', { textContent: r.title }),
@@ -142,6 +180,18 @@ function openSheet(r) {
   if (resumable.has(r.id)) {
     rows.push(el('button', { className: 'row', textContent: '↻ Start from the beginning', onclick: async () => { await db.deleteState(r.id); play(r, false); } }));
   }
+  rows.push(el('button', { className: 'row', textContent: '🖼 Change cover…', onclick: () => {
+    d.close();
+    openCoverPicker(r, { onSaved: async (res) => {
+      if (res.reset) { artMap.delete(r.id); await refresh(); if (navigator.onLine) await fetchMissingArt([r], { force: true }); return; }
+      await refresh(); toast('Cover updated');
+    } });
+  } }));
+  rows.push(el('button', { className: 'row', textContent: '🖼 Refresh cover art (automatic)', onclick: async () => {
+    d.close(); if (!navigator.onLine) return toast('You are offline — art needs internet.');
+    artMap.delete(r.id); await db.deleteArt(r.id).catch(() => {}); await fetchMissingArt([r], { force: true });
+  } }));
+  if (r.system === 'nds') rows.push(el('p', { className: 'muted small', textContent: 'Nintendo DS is demanding: expect slow speed on older phones and on iPhone Safari. DeSmuME 2015 is the lighter core.' }));
   if (sys.cores.length > 1) rows.push(el('label', { className: 'row select' }, 'Emulator core', coreSel));
   rows.push(
     el('button', { className: 'row', textContent: 'Rename', onclick: async () => {
@@ -150,7 +200,7 @@ function openSheet(r) {
     } }),
     el('button', { className: 'row danger', textContent: 'Remove from library', onclick: async () => {
       if (!confirm(`Remove “${r.title}” from this device?\nIn-game saves may also be lost.`)) return;
-      await db.deleteRom(r.id); await db.deleteState(r.id); d.close(); await refresh(); toast('Removed');
+      await db.deleteRom(r.id); await db.deleteState(r.id); await db.deleteArt(r.id).catch(() => {}); d.close(); await refresh(); toast('Removed');
     } }),
     el('button', { className: 'row ghost', textContent: 'Close', onclick: () => d.close() }));
   d.replaceChildren(...rows); d.showModal();
@@ -169,9 +219,11 @@ $('#btn-settings').onclick = async () => {
   d.replaceChildren(
     el('h3', { textContent: 'Settings' }),
     mk('Default Game Boy core (new games)', 'gbCore', [['gambatte', 'Gambatte'], ['mgba', 'mGBA']]),
-    mk('Default NES core (new games)', 'nesCore', [['fceumm', 'FCEUmm (fast)'], ['nestopia', 'Nestopia (accurate)']]),
+    mk('Default NES core (new games)', 'nesCore', [['nestopia', 'Nestopia (accurate, default)'], ['fceumm', 'FCEUmm (fast)']]),
+    mk('Default Nintendo DS core (new games)', 'dsCore', [['desmume2015', 'DeSmuME 2015 (lighter)'], ['melonds', 'melonDS (accurate, heavy)']]),
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
+    el('button', { className: 'row', textContent: '🖼 Fetch all missing cover art', onclick: () => { d.close(); $('#btn-art').click(); } }),
     el('p', { className: 'muted', textContent: est && est.usage != null ? `Storage used: ${(est.usage / 1048576).toFixed(1)} MB` : '' }),
     el('p', { className: 'muted small', textContent: 'Retro Pocket runs RetroArch-based emulator cores (via EmulatorJS) entirely in your browser. Bring your own legally obtained ROMs — none are included. GPL-3.0.' }),
     el('button', { className: 'row ghost', textContent: 'Close', onclick: () => d.close() }));
