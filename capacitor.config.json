@@ -1,0 +1,8 @@
+{
+  "appId": "com.retropocket.app",
+  "appName": "Retro Pocket",
+  "webDir": "www",
+  "backgroundColor": "#0e0f14",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}

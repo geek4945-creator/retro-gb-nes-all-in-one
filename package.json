@@ -1,0 +1,24 @@
+{
+  "name": "retro-gb-nes-all-in-one",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Retro Pocket – all-in-one Game Boy / GBC / GBA / NES / SNES emulator (PWA + Android APK) built on EmulatorJS / RetroArch cores",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory www",
+    "icons": "python3 scripts/make-icons.py",
+    "check": "node scripts/check.mjs",
+    "test": "node tests/e2e.mjs",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:debug": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}

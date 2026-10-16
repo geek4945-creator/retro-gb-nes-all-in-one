@@ -1,0 +1,12 @@
+node_modules/
+tests/fixtures/
+tests/out/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+*.apk
+*.zip
+.DS_Store

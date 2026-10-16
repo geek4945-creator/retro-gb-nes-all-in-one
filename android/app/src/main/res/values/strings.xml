@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Retro Pocket</string>
+    <string name="title_activity_main">Retro Pocket</string>
+    <string name="package_name">com.retropocket.app</string>
+    <string name="custom_url_scheme">com.retropocket.app</string>
+</resources>

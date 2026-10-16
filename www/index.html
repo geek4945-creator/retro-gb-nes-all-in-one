@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Retro Pocket</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0e0f14">
+  <meta name="description" content="All-in-one Game Boy, Game Boy Color, Game Boy Advance, NES and SNES emulator. Bring your own ROMs.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Retro Pocket">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="icons/favicon-32.png" alt="" width="28" height="28"><h1>Retro Pocket</h1></div>
+    <button id="btn-settings" class="icon-btn" aria-label="Settings">⚙︎</button>
+  </header>
+
+  <main>
+    <div id="install-hint" class="hint" hidden>
+      <b>Install on iPhone:</b> tap <span class="share">Share</span> → <b>Add to Home Screen</b> → <b>Add</b>.
+      <button id="hint-close" aria-label="Dismiss">✕</button>
+    </div>
+
+    <div class="tools">
+      <input id="search" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games">
+      <div id="chips" class="chips" role="tablist"></div>
+    </div>
+
+    <section id="library" class="grid" aria-live="polite"></section>
+
+    <section id="empty" class="empty" hidden>
+      <div class="empty-art">🎮</div>
+      <h2>No games yet</h2>
+      <p>Add your own ROM files (<code>.gb .gbc .gba .nes .sfc .smc</code>) and they'll be saved on this device. Nothing is uploaded anywhere.</p>
+      <p class="muted">Tip: files from the Files app, iCloud Drive or your downloads folder work.</p>
+    </section>
+  </main>
+
+  <label class="fab" for="file-input">＋ Add games</label>
+  <input id="file-input" type="file" multiple hidden>
+
+  <dialog id="sheet" class="sheet"></dialog>
+  <dialog id="settings" class="sheet"></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="drop" class="drop" hidden>Drop ROMs to add them</div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
