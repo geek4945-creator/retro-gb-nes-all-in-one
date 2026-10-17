@@ -91,7 +91,19 @@ The first launch of each system downloads its core (~1–4 MB) from the Emulator
 
 * DS emulation is **demanding**. Modern Android phones and recent iPhones can run many games but expect slowdowns; **iPhone Safari may be slow** (WebAssembly without JIT) — DeSmuME 2015 is the lighter core and the default, melonDS is more accurate but heavier (switch via the game's ⋯ menu).
 * **No special headers needed for DS.** Both DS cores run in the single-threaded build; only PPSSPP and DOSBox Pure need threads (see *Threads / cross-origin isolation* below).
-* Layout is top/bottom (portrait-friendly); drag/tap on the lower screen to use the stylus. DS save states are large, so auto-resume snapshots are taken only when you leave a game, not periodically.
+* DS save states are large, so auto-resume snapshots are taken only when you leave a game, not periodically.
+
+### ✋ DS touchscreen (stylus)
+
+**What was wrong:** EmulatorJS 4.2.3 has no touch API for the DS. RetroArch's web input turns taps into a "pointer", but both DS cores default to *relative-mouse* pointer modes (`desmume_pointer_type = mouse`, `melonds_touch_mode = Mouse`), so a finger on the bottom screen did nothing; even in the cores' absolute mode a finger resting on an on-screen button is first in the touch list, so the stylus finger is lost, and sliding in from the top screen or past the edge was not handled.
+
+**The fix** (`www/js/dstouch.js`, DS games only, both DeSmuME 2015 and melonDS): the player switches the core to its absolute touch mode and puts a transparent overlay over the game canvas (below the on-screen buttons, so buttons keep winning). The overlay computes where the bottom screen is (RetroArch's viewport maths for the current layout, CSS scaling, letter-boxing, orientation and `devicePixelRatio`) and feeds a single, correctly scaled mouse "stylus" to the core via the canvas. It supports tap, hold-and-slide, edge clamping, **multi-touch** (a thumb on A/D-pad while the other finger drives the stylus, in any order), ignores touches that *start* on the top screen, and a real **mouse** works on desktop (without pointer lock).
+
+**Settings** (Library → ⚙ Settings → *Nintendo DS touch & screens…*, and the in-game ☰ menu cycles *Touch* and *Screens* live):
+* **Touch mode** — *Direct touch* (default: the stylus is where your finger is) or *Trackpad* (drag moves a cursor without touching; tap = tap at the cursor; tap-then-drag or a second finger = hold the stylus down). Trackpad speed 1×–3×.
+* **Screen layout** — *Auto* (stacked in portrait, side-by-side in landscape), *Stacked*, *Stacked swapped*, *Side by side*, *Side by side swapped*, or *Bottom screen only* (bigger stylus area). Applied live through the core's own layout option; touch mapping follows.
+
+**Tests** (`node tests/dstouch.mjs`): a tiny hand-assembled DS "probe" ROM (`scripts/make-ds-touch-rom.py`, not a game) runs on the ARM7 and mirrors the touch panel and key registers into RAM; the test reads them back out of the core. With synthetic CDP touch/mouse input on **both cores** it checks the stylus pixel at centre/corners, drags, top-screen start ignored, edge clamping, A/B-button multi-touch, every layout, portrait/landscape and DPR 1–3, trackpad gestures, desktop mouse, the pause menu, that other systems get no overlay, and it reproduces the original bug. **Not tested:** a real DS game, a real phone or iOS Safari (Pointer Events + synthetic mouse events on iOS are unverified), real-game touch calibration/pressure, or the look of each layout in melonDS (the probe's ARM9 screen output doesn't run there).
 
 ## 🧩 Adding games for many systems
 
@@ -173,6 +185,7 @@ node tests/detect.mjs     # system detection / zip / cue unit tests (no browser)
 node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
 node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
+node tests/dstouch.mjs    # DS touchscreen: probe ROM, both cores, synthetic touch/mouse (headless Chrome)
 node tests/hash.mjs       # md5 implementation (no browser)
 node tests/threads.mjs    # PPSSPP/DOSBox cross-origin isolation + regression checks
 KEYS=psx,n64 ALT=1 node tests/systems.mjs   # boot matrix: a stub image per system / core (all systems when KEYS is unset)
@@ -202,12 +215,13 @@ www/                      the whole app (static; served by Pages and bundled int
   js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js, js/biosdata.js, js/hash.js  BIOS storage, dialog, open-file table, md5
   bios-open/              the only BIOS-type files in the repo: open-licensed, with licences/
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
+  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog
   js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
 android/                  Capacitor Android project (generated by `cap add android`, committed)
 capacitor.config.json     appId com.retropocket.app, webDir = www
-scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py, make-system-stubs.py, systems-table.mjs (README table generator)
-tests/                    e2e, crash, cover, pads, ds, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
+scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py, make-system-stubs.py, make-ds-touch-rom.py, systems-table.mjs (README table generator)
+tests/                    e2e, crash, cover, pads, ds, dstouch, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
 .github/workflows/        pages.yml (deploy web) · android.yml (build APK + release)
 ```
 

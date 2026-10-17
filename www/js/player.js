@@ -173,6 +173,16 @@ $('#pm-resume').onclick = () => setMenu(false);
 $('#pm-save').onclick = () => { quickSave(); setMenu(false); };
 $('#pm-load').onclick = () => { quickLoad(); setMenu(false); };
 $('#pm-restart').onclick = () => { try { emu().gameManager.restart(); } catch {} setMenu(false); };
+/* DS: quick switches in the pause menu (cycle buttons work with a controller too) */
+function addDsMenu(ds) {
+  if (document.getElementById('pm-dsmode')) return;
+  const cur = () => ds.loadDs(), paints = [];
+  const mk = (id, get, cycle) => { const b = document.createElement('button'); b.id = id; const paint = () => (b.textContent = get()); b.onclick = () => { cycle(); paint(); }; paint(); paints.push(paint); $('#pm-exit').before(b); };
+  mk('pm-dsmode', () => `✋ Touch: ${cur().mode === 'direct' ? 'Direct' : 'Trackpad'}`, () => ds.saveDs({ ...cur(), mode: cur().mode === 'direct' ? 'trackpad' : 'direct' }));
+  mk('pm-dslayout', () => `🖥 Screens: ${({ auto: 'Auto', stacked: 'Stacked', stackedSwap: 'Stacked, swapped', side: 'Side by side', sideSwap: 'Side by side, swapped', bottom: 'Bottom only' })[cur().layout] || 'Auto'}`,
+    () => { const o = ds.LAYOUT_ORDER; ds.saveDs({ ...cur(), layout: o[(o.indexOf(cur().layout) + 1) % o.length] }); });
+  addEventListener('rp-ds-change', () => paints.forEach((f) => f()));
+}
 $('#pm-exit').onclick = () => { setMenu(false); $('#back').click(); };
 const nav = startPadNav({
   getFocusables: () => [...document.querySelectorAll(!$('#crash').hidden ? '#crash button:not([hidden])' : '#pmenu button')],
@@ -245,9 +255,14 @@ requestAnimationFrame(hotkeys);
     'virtual-gamepad': 'enabled',
   };
   if (window.__rpAros) window.EJS_defaultOptions.puae_kickstart = 'aros';
+  // Nintendo DS: absolute touch pointer + chosen screen layout from the first frame (see dstouch.js); other systems never load this module
+  let ds = null;
+  if (rom.system === 'nds') {
+    try { ds = await import('./dstouch.js'); Object.assign(window.EJS_defaultOptions, ds.initialOptions(rom.core)); window.EJS_defaultOptions.lockMouse = 'disabled'; } catch (e) { console.warn('DS touch unavailable', e); ds = null; }
+  }
   window.EJS_ready = () => { status.hidden = true; };
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
+  window.EJS_onGameStart = () => { started = true; if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
   if (params.get('resume') === '1') {
     const st = await db.getState(rom.id);

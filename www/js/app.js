@@ -6,6 +6,7 @@ import * as db from './db.js';
 import { fetchArt, artUrl } from './art.js';
 import { openCoverPicker } from './cover.js';
 import { openControllers } from './padsui.js';
+import { openDsTouch } from './dsui.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
 
@@ -302,6 +303,7 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row', id: 'btn-bios', textContent: '🔑 BIOS files…', onclick: () => { d.close(); openBios($('#bios'), toast); } }),
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
+    el('button', { className: 'row', id: 'btn-ds', textContent: '🖐 Nintendo DS touch & screens…', onclick: () => { d.close(); openDsTouch($('#dstouch')); } }),
     el('button', { className: 'row', id: 'btn-controllers', textContent: '🎮 Controllers…', onclick: () => { d.close(); openControllers(); } }),
     el('button', { className: 'row', textContent: '🖼 Fetch all missing cover art', onclick: () => { d.close(); $('#btn-art').click(); } }),
     el('p', { className: 'muted', textContent: est && est.usage != null ? `Storage used: ${(est.usage / 1048576).toFixed(1)} MB` : '' }),
