@@ -7,14 +7,10 @@
 // (works offline afterwards). thumbnails.libretro.com is only used as a last, display-only fallback (<img>).
 import * as db from './db.js';
 
-export const REPOS = {
-  gb: 'Nintendo_-_Game_Boy', gbc: 'Nintendo_-_Game_Boy_Color', gba: 'Nintendo_-_Game_Boy_Advance',
-  nes: 'Nintendo_-_Nintendo_Entertainment_System', snes: 'Nintendo_-_Super_Nintendo_Entertainment_System', nds: 'Nintendo_-_Nintendo_DS',
-};
-export const FOLDERS = {   // directory names on thumbnails.libretro.com
-  gb: 'Nintendo - Game Boy', gbc: 'Nintendo - Game Boy Color', gba: 'Nintendo - Game Boy Advance',
-  nes: 'Nintendo - Nintendo Entertainment System', snes: 'Nintendo - Super Nintendo Entertainment System', nds: 'Nintendo - Nintendo DS',
-};
+import { SYSTEMS } from './cores.js';
+// libretro-thumbnails folder (as on thumbnails.libretro.com) and GitHub repository (spaces -> underscores) per system.
+export const FOLDERS = Object.fromEntries(Object.entries(SYSTEMS).map(([k, s]) => [k, s.art]));
+export const REPOS = Object.fromEntries(Object.entries(SYSTEMS).map(([k, s]) => [k, s.art.replace(/ /g, '_')]));
 const KINDS = ['Named_Boxarts', 'Named_Titles'];
 const RAW = 'https://raw.githubusercontent.com/libretro-thumbnails/';
 const API = 'https://api.github.com/repos/libretro-thumbnails/';
