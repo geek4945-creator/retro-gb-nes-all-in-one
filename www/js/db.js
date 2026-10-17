@@ -1,6 +1,6 @@
 // Tiny IndexedDB wrapper: ROM library + auto-resume states. ROMs are stored as ArrayBuffers
 // (more reliable than Blobs in older iOS Safari builds).
-const DB_NAME = 'retro-pocket', VERSION = 2;
+const DB_NAME = 'retro-pocket', VERSION = 3;
 let dbp;
 function open() {
   if (dbp) return dbp;
@@ -11,6 +11,7 @@ function open() {
       if (!db.objectStoreNames.contains('roms')) db.createObjectStore('roms', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('art')) db.createObjectStore('art', { keyPath: 'id' });     // cover art per ROM id
+      if (!db.objectStoreNames.contains('bios')) db.createObjectStore('bios', { keyPath: 'id' });   // user-supplied BIOS files (never bundled), id = system/name
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });   // cached thumbnail name indexes
     };
     req.onsuccess = () => resolve(req.result);
@@ -41,9 +42,19 @@ export const allArt = () => tx('art', 'readonly', (s) => s.getAll());
 export const deleteArt = (id) => tx('art', 'readwrite', (s) => s.delete(id));
 export const putMeta = (m) => tx('meta', 'readwrite', (s) => s.put(m));
 export const getMeta = (id) => tx('meta', 'readonly', (s) => s.get(id));
+export const putBios = (b) => tx('bios', 'readwrite', (s) => s.put(b));
+export const allBios = () => tx('bios', 'readonly', (s) => s.getAll());
+export const deleteBios = (id) => tx('bios', 'readwrite', (s) => s.delete(id));
+export const biosFor = async (system) => (await allBios()).filter((b) => b.system === system);
 export const allStateIds = () => tx('states', 'readonly', (s) => s.getAllKeys());
 
 export async function sha256Hex(buf) {
+  if (buf.byteLength > 48 * 1048576) {                 // huge disc images: id = size + first/middle/last 4 MB (hashing 600 MB on a phone is slow)
+    const u = new Uint8Array(buf), n = u.length, q = 4 * 1048576, mid = Math.floor(n / 2) - q / 2;
+    const small = new Uint8Array(q * 3 + 8); small.set(u.subarray(0, q), 0); small.set(u.subarray(mid, mid + q), q); small.set(u.subarray(n - q), q * 2);
+    new DataView(small.buffer).setFloat64(q * 3, n);
+    buf = small.buffer;
+  }
   if (crypto && crypto.subtle) {
     const d = await crypto.subtle.digest('SHA-256', buf);
     return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 32);

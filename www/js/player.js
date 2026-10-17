@@ -1,7 +1,8 @@
 // Launches EmulatorJS (RetroArch cores compiled to WebAssembly) for one ROM from the IndexedDB library,
 // guards the core against crashes and keeps resumable snapshots.
 import * as db from './db.js';
-import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore } from './cores.js';
+import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
+import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
 import { startPadNav } from './padnav.js';
 
@@ -46,7 +47,7 @@ async function snapshot({ force = false } = {}) {
   } catch (x) { console.warn('snapshot', x); }
 }
 setInterval(flushSaves, FLUSH_MS);
-setInterval(() => { if (rom && rom.system !== 'nds') snapshot(); }, SNAP_MS);
+setInterval(() => { if (rom && rom.system !== 'nds' && !(SYSTEMS[rom.system] || {}).heavy) snapshot(); }, SNAP_MS);   // big-state systems (DS, N64, PS1, PSP, Saturn…) only snapshot on exit/background
 
 /* ---------- crash handling ---------- */
 function crashScreen(reason, detail) {
@@ -207,7 +208,23 @@ requestAnimationFrame(hotkeys);
   rom.lastPlayed = Date.now(); db.putRom(rom).catch(() => {});
   if (params.get('switched')) { const b = $('#banner'); b.textContent = `Switched to ${CORE_LABELS[rom.core] || rom.core} after a problem with the previous core.`; b.hidden = false; setTimeout(() => (b.hidden = true), 6000); }
 
+  const sys = SYSTEMS[rom.system] || {};
+  if (needsThreads(rom.core) && !self.crossOriginIsolated) {
+    // Threaded cores (PPSSPP, DOSBox Pure) need SharedArrayBuffer == cross-origin isolation. GitHub Pages cannot send COOP/COEP headers,
+    // so our service worker adds them to this page when it is loaded with ?iso=1 (same trick as coi-serviceworker, but scoped to threaded cores only
+    // so every other core keeps loading cross-origin scripts exactly as before).
+    const why = 'This core needs multi-threading (cross-origin isolation), which this browser / WebView did not enable. Try the other core, a current Chrome/Safari 16.4+, or reload once.';
+    if (params.get('iso') || !('serviceWorker' in navigator)) return fail(why);
+    status.textContent = 'Enabling multi-threading…';
+    try { await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready; } catch (e) { return fail(why + ' (' + e.message + ')'); }
+    const u = new URL(location.href); u.searchParams.set('iso', '1'); location.replace(u.href); return;
+  }
   const file = new File([rom.data], rom.file, { type: 'application/octet-stream' });
+  try {
+    const bios = await buildBios(rom.system);                       // user-supplied BIOS from IndexedDB, never bundled
+    if (bios) { window.EJS_biosUrl = bios.file; window.EJS_dontExtractBIOS = bios.raw; window.__rpBios = bios.names; }
+  } catch (e) { console.warn('BIOS load failed', e); }
+  if (sys.heavy && !params.get('switched')) { const b = $('#banner'); b.textContent = `⚠ ${sys.label} is demanding — it may run slowly on phones.`; b.hidden = false; setTimeout(() => (b.hidden = true), 6000); }
   window.EJS_player = '#game';
   window.EJS_core = rom.core;
   window.EJS_gameUrl = file;
@@ -217,7 +234,7 @@ requestAnimationFrame(hotkeys);
   window.EJS_color = '#7c5cff';
   window.EJS_backgroundColor = '#000000';
   window.EJS_startOnLoaded = false;            // keep EmulatorJS' tap-to-start button: iOS needs a user gesture for audio
-  window.EJS_threads = false;                  // single-threaded cores (incl. DS): no COOP/COEP headers / SharedArrayBuffer needed
+  window.EJS_threads = needsThreads(rom.core);  // single-threaded everywhere except PPSSPP / DOSBox Pure (which need cross-origin isolation, see above)
   window.EJS_language = 'en-US';
   window.EJS_defaultOptions = {
     'save-state-location': 'browser',          // keep manual save states inside the browser, not downloads

@@ -7,7 +7,7 @@ import { cleanTitle, getIndex, searchNames, rawUrl, shrink } from './art.js';
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); for (const k of kids) e.append(k); return e; };
 const OUT_W = 300, OUT_H = 400, PRE_W = 240, PRE_H = 320;
-const SYS_WORDS = /\b(nes|famicom|nintendo|entertainment system|super nintendo|snes|super famicom|game ?boy( color| advance)?|gbc|gba|gb|nintendo ds|ds|nds)\b/gi;
+const SYS_WORDS = /\b(nes|famicom|nintendo( 64| ds)?|entertainment system|super nintendo|snes|super famicom|game ?boy( color| advance)?|gbc|gba|gb|ds|nds|n64|playstation( portable)?|psx|ps1|psp|sega( cd| saturn| genesis| master system| game gear)?|genesis|mega drive|mega-cd|master system|game gear|saturn|32x|atari( 2600| 5200| 7800| lynx| jaguar)?|lynx|jaguar|neo geo( pocket( color)?)?|pc engine|turbografx(-16|-cd)?|wonderswan( color)?|virtual boy|3do|commodore( 64| amiga)?|c64|amiga|vic-20|zx spectrum|amstrad cpc|colecovision|dos|mame|arcade)\b/gi;
 const WEIRD_PROXY = (u) => `https://images.weserv.nl/?url=${encodeURIComponent(u.replace(/^https?:\/\//, ''))}&w=600&output=jpg&q=85`;
 
 export const getKeys = () => { try { return JSON.parse(localStorage.getItem('rp.keys') || '{}'); } catch { return {}; } };
@@ -70,7 +70,7 @@ export async function loadImage(url, { allowProxy = true } = {}) {
 export function openCoverPicker(rom, { onSaved } = {}) {
   const dlg = $('#cover'); dlg.replaceChildren();
   const sys = SYSTEMS[rom.system];
-  const sysWord = { gb: 'Game Boy', gbc: 'Game Boy Color', gba: 'Game Boy Advance', nes: 'NES', snes: 'SNES', nds: 'Nintendo DS' }[rom.system];
+  const sysWord = sys.label.replace(/ \/.*$/, '').replace(/\(.*\)/, '').trim();
   let gen = 0;
 
   const q = el('input', { id: 'cover-q', type: 'search', value: `${cleanTitle(rom.file)} ${sysWord}`, autocomplete: 'off' });

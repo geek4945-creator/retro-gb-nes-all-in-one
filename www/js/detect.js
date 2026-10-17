@@ -136,3 +136,25 @@ export async function detect(file, { peek = true } = {}) {
   const cands = AMBIGUOUS[ext] || [];
   return { system: null, candidates: cands.length ? rank(cands, likely, file.size) : [], likely, inner };
 }
+
+/** Extracts entries from a ZIP (stored or deflated) -> [{ name, data: Uint8Array }]. Used for BIOS packs uploaded as .zip. */
+export async function unzipEntries(blob, want = () => true) {
+  const tailLen = Math.min(blob.size, 66000), tail = new Uint8Array(await blob.slice(blob.size - tailLen).arrayBuffer());
+  let i = tail.length - 22; while (i >= 0 && !(tail[i] === 0x50 && tail[i + 1] === 0x4b && tail[i + 2] === 5 && tail[i + 3] === 6)) i--;
+  if (i < 0) return [];
+  const dv = new DataView(tail.buffer, tail.byteOffset + i), n = dv.getUint16(10, true), size = dv.getUint32(12, true), off = dv.getUint32(16, true);
+  const cd = new Uint8Array(await blob.slice(off, off + size).arrayBuffer()), cv = new DataView(cd.buffer), out = []; let p = 0;
+  for (let k = 0; k < n && cv.getUint32(p, true) === 0x02014b50; k++) {
+    const method = cv.getUint16(p + 10, true), csize = cv.getUint32(p + 20, true), nl = cv.getUint16(p + 28, true), el = cv.getUint16(p + 30, true), cl = cv.getUint16(p + 32, true), lho = cv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(cd.subarray(p + 46, p + 46 + nl)); p += 46 + nl + el + cl;
+    if (name.endsWith('/') || !want(name)) continue;
+    const lh = new DataView(await blob.slice(lho, lho + 30).arrayBuffer()), start = lho + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+    const raw = blob.slice(start, start + csize);
+    let data;
+    if (method === 0) data = new Uint8Array(await raw.arrayBuffer());
+    else if (method === 8 && typeof DecompressionStream === 'function') data = new Uint8Array(await new Response(raw.stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    else continue;
+    out.push({ name: name.split('/').pop(), data });
+  }
+  return out;
+}

@@ -1,4 +1,7 @@
-import { SYSTEMS, CORE_LABELS, systemFor, titleFrom, defaultCore, loadSettings, saveSettings, extOf } from './cores.js';
+import { SYSTEMS, GROUPS, CORE_LABELS, sortedSystemKeys, titleFrom, defaultCore, loadSettings, saveSettings, extOf, needsThreads } from './cores.js';
+import { detect, storedZip, parseCue, parseM3u } from './detect.js';
+import { biosStatus } from './bios.js';
+import { openBios } from './biosui.js';
 import * as db from './db.js';
 import { fetchArt, artUrl } from './art.js';
 import { openCoverPicker } from './cover.js';
@@ -12,7 +15,7 @@ const el = (tag, props = {}, ...kids) => {
   for (const k of kids) e.append(k);
   return e;
 };
-const MAX_ROM = 64 * 1024 * 1024;
+const MAX_ROM = 1200 * 1024 * 1024;       // PS1/Saturn/3DO disc images are big; the practical limit is the device's memory
 let roms = [], artMap = new Map(), artUrls = new Map(), resumable = new Set(), filter = 'all', query = '', settings = loadSettings();
 
 /* ---------- toast ---------- */
@@ -32,7 +35,7 @@ async function refresh() {
 
 function render() {
   const chips = $('#chips'); chips.replaceChildren();
-  const present = ['all', ...Object.keys(SYSTEMS).filter((k) => roms.some((r) => r.system === k))];
+  const present = ['all', ...sortedSystemKeys().filter((k) => roms.some((r) => r.system === k))];
   if (!present.includes(filter)) filter = 'all';
   for (const k of present) {
     chips.append(el('button', {
@@ -42,6 +45,7 @@ function render() {
     }));
   }
   chips.hidden = roms.length === 0;
+  const on = chips.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'center', block: 'nearest' });
   $('#search').hidden = roms.length === 0;
 
   const q = query.trim().toLowerCase();
@@ -63,7 +67,8 @@ function card(r) {
   const h = hue(r.title);
   const art = el('div', { className: 'art' },
     el('span', { className: 'ph-title', textContent: r.title }),     // generated placeholder cover: system colour + title
-    el('span', { className: 'badge', textContent: sys.short }));
+    el('span', { className: 'badge', textContent: sys.short }),
+    ...(sys.heavy ? [el('span', { className: 'warn', textContent: '⚠', title: `${sys.label} is demanding — may run slowly on phones` })] : []));
   art.style.background = `linear-gradient(150deg, ${sys.color}, hsl(${h} 45% 18%) 75%)`;
   const url = artUrl(artMap.get(r.id));
   if (url) {
@@ -110,41 +115,92 @@ $('#btn-art').onclick = () => {
 };
 
 /* ---------- adding ROMs ---------- */
-function askSystem(filename) {
+function askSystem(filename, candidates = [], likely = []) {
   return new Promise((resolve) => {
-    const d = $('#sheet'); d.replaceChildren(
-      el('h3', { textContent: 'Which system is this?' }),
-      el('p', { className: 'muted', textContent: `“${filename}” has an unrecognised extension.` }),
-      ...Object.entries(SYSTEMS).map(([k, s]) => el('button', { className: 'row', textContent: s.label, onclick: () => { d.onclose = null; d.close(); resolve(k); } })),
-      el('button', { className: 'row ghost', textContent: 'Skip this file', onclick: () => d.close() }));
-    d.onclose = () => resolve(null);
-    d.showModal();
+    const d = $('#sheet'); let all = !candidates.length;
+    const pick = (k) => { d.onclose = null; d.close(); resolve(k); };
+    const draw = () => {
+      const list = all ? sortedSystemKeys() : candidates;
+      const rows = [];
+      let lastGroup = '';
+      for (const k of list) {
+        const sy = SYSTEMS[k];
+        if (all && sy.group !== lastGroup) { lastGroup = sy.group; rows.push(el('p', { className: 'muted small grp', textContent: sy.group })); }
+        rows.push(el('button', { className: 'row' + (likely.includes(k) ? ' primary' : ''), textContent: sy.label + (likely.includes(k) ? '  ✓ looks like this' : '') + (sy.heavy ? '  ⚠' : ''), onclick: () => pick(k) }));
+      }
+      d.replaceChildren(
+        el('h3', { textContent: 'Which system is this?' }),
+        el('p', { className: 'muted', textContent: `“${filename}” could be more than one system${candidates.length ? '' : ' (unrecognised extension)'}.` }),
+        ...rows,
+        ...(!all ? [el('button', { className: 'row', textContent: 'Show all systems…', onclick: () => { all = true; draw(); } })] : []),
+        el('button', { className: 'row ghost', textContent: 'Skip this file', onclick: () => d.close() }));
+    };
+    draw(); d.onclose = () => resolve(null); d.showModal();
   });
 }
 
+const baseName = (n) => n.replace(/\.[^.]*$/, '');
+/** Group cue sheets / m3u playlists with the track files that were selected together (cue+bin -> one ZIP bundle). */
+async function planFiles(files) {
+  const byName = new Map(files.map((f) => [f.name.toLowerCase(), f]));
+  const used = new Set(), items = [];
+  const find = (n) => byName.get(n.toLowerCase());
+  const bundleCue = async (cue, entries, missing) => {
+    entries.push({ name: cue.name, data: cue }); used.add(cue);
+    for (const n of parseCue(await cue.text())) { const t = find(n); if (t) { if (!entries.some((e) => e.name === t.name)) entries.push({ name: t.name, data: t }); used.add(t); } else missing.push(n); }
+  };
+  for (const m of files.filter((f) => extOf(f.name) === 'm3u')) {
+    const entries = [{ name: m.name, data: m }], missing = []; used.add(m);
+    for (const n of parseM3u(await m.text())) {
+      const t = find(n); if (!t) { missing.push(n); continue; }
+      if (extOf(t.name) === 'cue') await bundleCue(t, entries, missing); else { entries.push({ name: t.name, data: t }); used.add(t); }
+    }
+    items.push({ kind: 'bundle', name: m.name, entries, missing });
+  }
+  for (const c of files.filter((f) => extOf(f.name) === 'cue' && !used.has(f))) {
+    const entries = [], missing = []; await bundleCue(c, entries, missing);
+    items.push({ kind: 'bundle', name: c.name, entries, missing });
+  }
+  for (const f of files) if (!used.has(f)) items.push({ kind: 'single', file: f, name: f.name });
+  return items;
+}
+
 async function addFiles(files) {
-  let added = 0, dup = 0, skipped = 0; const newRoms = [];
-  for (const f of files) {
+  let added = 0, dup = 0, skipped = 0; const newRoms = [], problems = [];
+  for (const item of await planFiles(files)) {
     try {
-      if (f.size > MAX_ROM) { skipped++; continue; }
-      let system = systemFor(f.name), fname = f.name;
+      let blob, name = item.name, probe;
+      if (item.kind === 'bundle') {
+        if (item.missing.length) { skipped++; problems.push(`“${item.name}” needs ${item.missing.slice(0, 2).join(', ')}${item.missing.length > 2 ? '…' : ''} — select the .cue and its .bin file(s) together`); continue; }
+        const first = item.entries.find((e) => !/\.(cue|m3u)$/i.test(e.name)); if (!first) { skipped++; continue; }
+        toast(`Bundling ${item.name}…`);
+        blob = await storedZip(item.entries); name = baseName(item.name) + '.zip';
+        probe = { name: 'x.cue', size: first.data.size, slice: (a, b) => first.data.slice(a, b) };
+      } else { blob = item.file; probe = item.file; }
+      if (blob.size > MAX_ROM) { skipped++; problems.push(`“${name}” is too large (${(blob.size / 1048576).toFixed(0)} MB)`); continue; }
+      let d = await detect(probe), system = d.system;
       if (!system) {
-        system = await askSystem(f.name);
+        system = await askSystem(item.name, d.candidates, d.likely);
         if (!system) { skipped++; continue; }
-        const ext = { gb: 'gb', gbc: 'gbc', gba: 'gba', nes: 'nes', snes: 'sfc', nds: 'nds' }[system];
-        if (extOf(f.name) !== 'zip') fname = f.name.replace(/\.[^.]*$/, '') + '.' + ext;
       }
-      const data = await f.arrayBuffer();
+      let fname = name;
+      const sy = SYSTEMS[system], ext = extOf(name);
+      if (item.kind === 'single' && !['zip', '7z'].includes(ext) && sy.exts.length && !sy.exts.includes(ext) && ext !== 'bin') fname = baseName(name) + '.' + sy.exts[0];
+      if (system === 'dos' && ['zip'].includes(ext)) {            // DOSBox Pure wants to open the .zip itself: nest it so EmulatorJS does not unpack it
+        blob = await storedZip([{ name: baseName(name) + '.zip', data: blob }]); fname = baseName(name) + '.zip';
+      }
+      const data = await blob.arrayBuffer();
       const id = await db.sha256Hex(data);
       if (await db.getRom(id)) { dup++; continue; }
       await db.putRom({
-        id, file: fname, title: titleFrom(f.name), system, core: defaultCore(system, settings),
+        id, file: fname, title: titleFrom(item.name), system, core: defaultCore(system, settings),
         size: data.byteLength, added: Date.now(), lastPlayed: 0, data,
       });
       added++; newRoms.push(id);
     } catch (e) {
       console.error(e); skipped++;
       if (e && e.name === 'QuotaExceededError') { toast('Storage is full — free up space and try again.'); break; }
+      problems.push(`“${item.name}”: ${e.message || e}`);
     }
   }
   await refresh();
@@ -152,6 +208,7 @@ async function addFiles(files) {
   if (added) parts.push(`Added ${added} game${added > 1 ? 's' : ''}`);
   if (dup) parts.push(`${dup} already in library`);
   if (skipped) parts.push(`${skipped} skipped`);
+  if (problems.length) parts.push(problems[0]);
   if (parts.length) toast(parts.join(' · '));
   if (newRoms.length) fetchMissingArt(roms.filter((r) => newRoms.includes(r.id)), { quiet: true });
 }
@@ -170,14 +227,19 @@ addEventListener('drop', async (e) => {
 });
 
 /* ---------- per-game sheet ---------- */
-function openSheet(r) {
+async function openSheet(r) {
   const d = $('#sheet'); d.onclose = null;
   const sys = SYSTEMS[r.system];
   const coreSel = el('select', { onchange: async () => { r.core = coreSel.value; await db.putRom(r); await db.deleteState(r.id).catch(() => {}); resumable.delete(r.id); toast('Core set to ' + r.core + ' (auto-resume snapshot cleared)'); } },
     ...sys.cores.map((c) => el('option', { value: c, textContent: CORE_LABELS[c] || c, selected: c === r.core })));
+  const sysSel = el('select', { onchange: async () => {
+    r.system = sysSel.value; r.core = defaultCore(r.system, settings); await db.putRom(r); await db.deleteState(r.id).catch(() => {}); resumable.delete(r.id);
+    d.close(); await refresh(); toast(`Moved to ${SYSTEMS[r.system].label}`);
+  } }, ...GROUPS.map((g) => el('optgroup', { label: g }, ...sortedSystemKeys().filter((k) => SYSTEMS[k].group === g).map((k) => el('option', { value: k, textContent: SYSTEMS[k].label, selected: k === r.system })))));
+  const size = r.size > 1048576 ? `${(r.size / 1048576).toFixed(1)} MB` : `${(r.size / 1024).toFixed(0)} KB`;
   const rows = [
     el('h3', { textContent: r.title }),
-    el('p', { className: 'muted', textContent: `${sys.label} · ${(r.size / 1024).toFixed(0)} KB · ${r.file}` }),
+    el('p', { className: 'muted', textContent: `${sys.label} · ${size} · ${r.file}` }),
     el('button', { className: 'row primary', textContent: resumable.has(r.id) ? '▶ Resume where you left off' : '▶ Play', onclick: () => play(r, resumable.has(r.id)) }),
   ];
   if (resumable.has(r.id)) {
@@ -195,7 +257,17 @@ function openSheet(r) {
     artMap.delete(r.id); await db.deleteArt(r.id).catch(() => {}); await fetchMissingArt([r], { force: true });
   } }));
   if (r.system === 'nds') rows.push(el('p', { className: 'muted small', textContent: 'Nintendo DS is demanding: expect slow speed on older phones and on iPhone Safari. DeSmuME 2015 is the lighter core.' }));
+  else if (sys.heavy) rows.push(el('p', { className: 'muted small warnline', textContent: `⚠ ${sys.label} is demanding: expect slow speed or high battery/memory use on phones, especially iPhone Safari. A recent desktop or high-end phone works best.` }));
+  if (sys.experimental) rows.push(el('p', { className: 'muted small', textContent: 'Experimental core: it boots in EmulatorJS 4.2.3 but gets little testing — please expect rough edges.' }));
+  if (needsThreads(r.core)) rows.push(el('p', { className: 'muted small', textContent: 'This core needs multi-threading (SharedArrayBuffer). Retro Pocket turns on cross-origin isolation for it automatically.' }));
+  if (sys.hint) rows.push(el('p', { className: 'muted small', textContent: sys.hint }));
+  const bst = await biosStatus(r.system);
+  if (bst.spec) {
+    rows.push(el('p', { className: 'muted small' + (bst.needs ? ' warnline' : ''), textContent: bst.needs ? `⚠ BIOS needed: ${bst.spec.files.filter((x) => x.level === 'required').map((x) => x.name).join(' / ')} — not added yet.` : bst.have.length ? `BIOS on this device: ${bst.have.join(', ')}` : 'BIOS: optional for this system.' }));
+    rows.push(el('button', { className: 'row', textContent: '🔑 BIOS files…', onclick: () => { d.close(); openBios($('#bios'), toast); } }));
+  }
   if (sys.cores.length > 1) rows.push(el('label', { className: 'row select' }, 'Emulator core', coreSel));
+  rows.push(el('label', { className: 'row select' }, 'System', sysSel));
   rows.push(
     el('button', { className: 'row', textContent: 'Rename', onclick: async () => {
       const n = prompt('Game title', r.title);
@@ -224,6 +296,8 @@ $('#btn-settings').onclick = async () => {
     mk('Default Game Boy core (new games)', 'gbCore', [['gambatte', 'Gambatte'], ['mgba', 'mGBA']]),
     mk('Default NES core (new games)', 'nesCore', [['nestopia', 'Nestopia (accurate, default)'], ['fceumm', 'FCEUmm (fast)']]),
     mk('Default Nintendo DS core (new games)', 'dsCore', [['desmume2015', 'DeSmuME 2015 (lighter)'], ['melonds', 'melonDS (accurate, heavy)']]),
+    el('button', { className: 'row', id: 'btn-cores', textContent: '⚙︎ Default cores for other systems…', onclick: () => openCoreDefaults(d) }),
+    el('button', { className: 'row', id: 'btn-bios', textContent: '🔑 BIOS files…', onclick: () => { d.close(); openBios($('#bios'), toast); } }),
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
     el('button', { className: 'row', id: 'btn-controllers', textContent: '🎮 Controllers…', onclick: () => { d.close(); openControllers(); } }),
@@ -233,6 +307,16 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row ghost', textContent: 'Close', onclick: () => d.close() }));
   d.showModal();
 };
+
+function openCoreDefaults(d) {
+  const keys = sortedSystemKeys().filter((k) => !['gb', 'gbc', 'nes', 'nds'].includes(k) && SYSTEMS[k].cores.length > 1);
+  d.replaceChildren(el('h3', { textContent: 'Default cores' }),
+    el('p', { className: 'muted small', textContent: 'Used for newly added games. You can still change the core per game (⋯ menu).' }),
+    ...keys.map((k) => el('label', { className: 'row select' }, SYSTEMS[k].label,
+      el('select', { onchange: (e) => { settings.cores = { ...settings.cores, [k]: e.target.value }; saveSettings(settings); } },
+        ...SYSTEMS[k].cores.map((c) => el('option', { value: c, textContent: CORE_LABELS[c] || c, selected: defaultCore(k, settings) === c }))))),
+    el('button', { className: 'row ghost', textContent: 'Back', onclick: () => $('#btn-settings').click() }));
+}
 
 /* ---------- misc ---------- */
 $('#search').addEventListener('input', (e) => { query = e.target.value; render(); });

@@ -3,8 +3,9 @@
 // Works anywhere the Gamepad API does: desktop browsers, iOS/iPadOS Safari 13+ (MFi, Xbox, PlayStation, Switch Pro via Bluetooth),
 // Android Chrome and the Capacitor Android WebView (Chromium).
 
-export const ANALOG_SYSTEMS = ['n64', 'psx', 'psp'];            // cores that use real analog sticks (none bundled yet, code path ready)
-export const MAX_PLAYERS = { gb: 1, gbc: 1, gba: 1, nes: 2, snes: 2, nds: 1, n64: 4, psx: 2, psp: 1 };
+import { SYSTEMS } from './cores.js';
+export const ANALOG_SYSTEMS = Object.keys(SYSTEMS).filter((k) => SYSTEMS[k].analog);                 // N64, PlayStation, PSP: real analog sticks
+export const MAX_PLAYERS = Object.fromEntries(Object.entries(SYSTEMS).map(([k, s]) => [k, s.players]));
 
 // RetroPad control indices used by EmulatorJS
 export const CONTROLS = [

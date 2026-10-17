@@ -106,9 +106,9 @@ export const SYSTEMS = {
           hint: 'Add your own IWAD (doom.wad, doom2.wad, freedoom…). Not included.' },
 
   // ---- Arcade
-  arcade: { group: 'Arcade', label: 'Arcade (FinalBurn Neo)', short: 'ARCADE', color: '#e0662b', cores: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2'], art: 'FBNeo - Arcade Games', exts: [], players: 4, archive: 'zip',
+  arcade: { group: 'Arcade', label: 'Arcade (FinalBurn Neo)', short: 'ARCADE', color: '#e0662b', cores: ['fbneo', 'fbalpha2012_cps1', 'fbalpha2012_cps2'], art: 'FBNeo - Arcade Games', exts: [], players: 4, archive: 'zip', biosFrom: 'neogeo',
           hint: 'Select = Coin, Start = Start. Use the exact ROM-set .zip for FBNeo (needs matching version of the set).' },
-  mame: { group: 'Arcade', label: 'Arcade (MAME 2003+)', short: 'MAME', color: '#c24a1c', cores: ['mame2003_plus', 'mame2003'], art: 'MAME', exts: [], players: 4, archive: 'zip',
+  mame: { group: 'Arcade', label: 'Arcade (MAME 2003+)', short: 'MAME', color: '#c24a1c', cores: ['mame2003_plus', 'mame2003'], art: 'MAME', exts: [], players: 4, archive: 'zip', biosFrom: 'neogeo',
           hint: 'Select = Coin, Start = Start. Use ROM sets matching MAME 0.78 / 2003-Plus.' },
 };
 
