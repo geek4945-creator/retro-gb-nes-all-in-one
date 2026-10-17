@@ -47,8 +47,11 @@ async function run(key, core) {
         await sleep(2000);
         const f2 = await page.evaluate(() => { try { return window.EJS_emulator.gameManager.getFrameNum(); } catch (e) { return -1; } });
         const crashed = await page.evaluate(() => !!window.__rpCrashed);
-        rec.frames = f2 - f; rec.detail = `frames ${f}→${f2}`;
-        rec.status = crashed ? 'CRASH' : f2 > f ? 'BOOT' : 'STALL';
+        if ((f < 0 || f2 < 0) && !rec.fallback) {          // the core aborted and the player reloaded itself with the alternate core: follow it
+          rec.fallback = true; phase = ''; await sleep(1500); continue;
+        }
+        rec.frames = f2 - f; rec.detail = `frames ${f}→${f2}` + (rec.fallback ? ' (core aborted → automatic fallback to the alternate core)' : '');
+        rec.status = crashed ? 'CRASH' : f2 > f ? (rec.fallback ? 'BOOT*' : 'BOOT') : 'STALL';
         break;
       }
       await sleep(400);
@@ -80,5 +83,5 @@ if (process.env.WRITE_DOC) {
   writeFileSync('docs/boot-matrix.md', L.join('\n') + '\n');
 }
 const bad = results.filter((r) => ['FAIL', 'CRASH', 'STALL'].includes(r.status));
-console.log(`\n${results.filter((r) => r.status === 'BOOT').length} booted, ${results.filter((r) => r.status === 'REJECTED').length} loaded the core but rejected the stub, ${bad.length} problem(s)`);
+console.log(`\n${results.filter((r) => r.status.startsWith('BOOT')).length} booted, ${results.filter((r) => r.status === 'REJECTED').length} loaded the core but rejected the stub, ${bad.length} problem(s)`);
 process.exit(0);

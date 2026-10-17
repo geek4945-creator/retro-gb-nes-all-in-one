@@ -3,11 +3,13 @@
 import puppeteer from 'puppeteer-core';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
-const PORT = Number(process.env.PORT || 18000 + Math.floor(Math.random() * 20000)), base = `http://localhost:${PORT}/`;
+const PORT = Number(process.env.PORT || 18000 + Math.floor(Math.random() * 20000));
+const LIVE = process.env.BASE_URL;                      // e.g. https://<user>.github.io/retro-gb-nes-all-in-one/  (test the deployed site)
+const base = LIVE ? LIVE.replace(/\/?$/, '/') : `http://localhost:${PORT}/`;
 mkdirSync('tests/fixtures/systems', { recursive: true }); mkdirSync('tests/out', { recursive: true });
 execFileSync('python3', ['scripts/make-system-stubs.py', 'tests/fixtures/systems'], { stdio: 'ignore' });
 const man = JSON.parse(readFileSync('tests/fixtures/systems/manifest.json', 'utf8'));
-const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', 'www'], { stdio: 'ignore' });   // python's server sends NO COOP/COEP
+const srv = LIVE ? { kill() {} } : spawn('python3', ['-m', 'http.server', String(PORT), '--directory', 'www'], { stdio: 'ignore' });   // python's server sends NO COOP/COEP
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failed = 0;
 const step = async (n, f) => { try { const v = await f(); console.log('PASS', n, v ?? ''); } catch (e) { failed++; console.log('FAIL', n, '->', e.message); } };

@@ -62,7 +62,7 @@ put('ws', 'ws.ws', ws); wsc = bytearray(ws); wsc[-7] = 0x01; put('wsc', 'wsc.wsc
 put('vb', 'vb.vb', bytes(0x80000))
 put('coleco', 'coleco.col', b'\x55\xaa' + bytes([0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80]) + bytes(0x2000 - 12), 'needs colecovision.rom BIOS')
 # ---- N64
-n64 = bytearray(0x100000); n64[0:4] = bytes([0x80, 0x37, 0x12, 0x40]); n64[4:8] = struct.pack('>I', 0x0000000F); n64[8:12] = struct.pack('>I', 0x80000400); n64[0x20:0x34] = b'TESTROM'.ljust(20, b'\0'); n64[0x3B:0x3F] = b'NTST'; n64[0x3E] = ord('E'); put('n64', 'n64.z64', n64)
+n64 = bytearray(0x800000); n64[0:4] = bytes([0x80, 0x37, 0x12, 0x40]); n64[4:8] = struct.pack('>I', 0x0000000F); n64[8:12] = struct.pack('>I', 0x80000400); n64[0x20:0x34] = b'TESTROM'.ljust(20, b'\0'); n64[0x3B:0x3F] = b'NTST'; n64[0x3E] = ord('E'); put('n64', 'n64.z64', n64)
 # ---- Computers (BASIC stubs that jump to themselves)
 def prg(addr, sys_txt, jmp):
     return struct.pack('<H', addr) + struct.pack('<H', addr + 10) + struct.pack('<H', 10) + b'\x9e' + sys_txt.encode() + b'\x00\x00\x00' + bytes([0x4C]) + struct.pack('<H', jmp)
