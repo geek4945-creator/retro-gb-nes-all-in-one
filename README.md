@@ -105,6 +105,20 @@ The first launch of each system downloads its core (~1–4 MB) from the Emulator
 
 **Tests** (`node tests/dstouch.mjs`): a tiny hand-assembled DS "probe" ROM (`scripts/make-ds-touch-rom.py`, not a game) runs on the ARM7 and mirrors the touch panel and key registers into RAM; the test reads them back out of the core. With synthetic CDP touch/mouse input on **both cores** it checks the stylus pixel at centre/corners, drags, top-screen start ignored, edge clamping, A/B-button multi-touch, every layout, portrait/landscape and DPR 1–3, trackpad gestures, desktop mouse, the pause menu, that other systems get no overlay, and it reproduces the original bug. **Not tested:** a real DS game, a real phone or iOS Safari (Pointer Events + synthetic mouse events on iOS are unverified), real-game touch calibration/pressure, or the look of each layout in melonDS (the probe's ARM9 screen output doesn't run there).
 
+## ☰ In-game menu (no pop-up bottom bar)
+
+EmulatorJS' own bottom control bar (it popped up when you touched "dead" areas, hovered near the bottom edge or long-pressed) is **never shown** any more, so touches in empty areas do nothing and never interrupt play (on DS they are ignored too). Instead there is one small, semi-transparent **☰ button at the top of the screen** (44 px tap target, safe-area aware for the iPhone notch / Home Screen app). It opens the pause menu:
+
+* **Resume · Save state · Load state · Restart · Exit to library**
+* **Sound** on/off · **Fast-forward** on/off · **Screenshot** (downloads a PNG) · **Fullscreen** (whole page, so the menu stays reachable; hidden where the browser has no fullscreen, e.g. iPhone Safari)
+* **Controls…** (EmulatorJS key/touch mapping) · **Cheats…** (where the core supports them) · **Disc / disk…** (multi-disc games) · **Emulator settings…** (EmulatorJS' full settings: shaders, speed ratios, volume, save-state slot, core options — shown in our own full-screen panel)
+* **DS only:** *Touch* mode and *Screens* layout · **Menu button position** (cycle)
+* Controller: hold **Select + Start** (or **Guide**) still opens the same menu; **Select + R1 / L1** quick save / load are unchanged.
+
+**Settings** (Library → ⚙ Settings → *In-game menu button…*): position **top-left / top-center / top-right**, and **fade out when idle** (on by default: after ~3.5 s the button dims to a faint ghost; it is still there and a single tap still opens the menu, and touching near the top edge brings it back). The library-side *‹ Library* button is gone; use *Exit to library* in the menu.
+
+Tested in `node tests/ingame.mjs` (dead-zone taps, long-press, swipe, desktop hover/click/right-click, ☰ placement/size, every menu function, settings panel, auto-fade, position/auto-hide settings, landscape) and in `tests/dstouch.mjs` (DS dead zones, ☰ does not reach the stylus). Not tested: a real phone / iOS Safari (safe-area insets with a real notch are only checked by CSS `env()`), real fullscreen on iOS, a multi-disc game (the Disc button is verified hidden for single-disc games).
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.
@@ -159,7 +173,7 @@ Uses the browser **Gamepad API**, so Xbox, PlayStation (DualShock 4 / DualSense)
 * **Auto-detect:** a toast appears on connect/disconnect (library and in game); the first pads become Player 1, 2, 3, 4 in connection order. The on-screen touch pad is **hidden while a controller is connected**, comes back when you touch the screen (and hides again on the next controller input), and returns on disconnect.
 * **Settings → 🎮 Controllers…** (not an About tab): connected pads with a live input readout, per-pad **player assignment** (Auto / Player 1–4 / Off), **button layout** (*Nintendo positions*: right = A, bottom = B — or *Xbox labels*), **stick deadzone**, left-stick-as-D-pad, hide-touch-pad, hotkeys on/off, **keyboard** controls for desktop with a preset, and a **per-player remap table** (tap a control, then press the pad button / key you want; "Reset" per player). Mappings are stored in `localStorage` (`rp.pad`) and applied to EmulatorJS (`EJS_defaultControls` + re-applied after start) for **every system**, all four players. Player counts follow each system (table above, `players` in `www/js/cores.js`: e.g. 4 for N64 and arcade, 2 for NES/SNES/Genesis/PS1, 1 for handhelds); extra controllers are ignored by one-player systems.
 * **Analog sticks / triggers:** a deadzone (radial) is applied to the sticks before EmulatorJS sees them. NES/GB/GBA/SNES/DS are digital, so the left stick acts as a D-pad (and "hat" D-pads that browsers expose as an axis are decoded); analog triggers act as L2/R2 buttons. On the analog systems (**N64, PlayStation, PSP**; `analog: true` in `cores.js`) both sticks are passed through unmodified apart from the deadzone: the left stick is the analog stick (N64/PSP/PS1 analog mode), the right stick is the N64 C-buttons, **L2/R2** are the PS1/PSP triggers and **Z** on N64, L3/R3 are the stick clicks. Arcade/Neo Geo: **Select = Coin**, **Start = Start** (hold Select+Start still opens the app menu). Per-system hints are shown in the pause menu.
-* **In game hotkeys:** hold **Select + Start** (or press the **Guide/Home** button) for the pause menu (Resume, Save state, Load state, Restart, Exit — also reachable with the ☰ button); **Select + R1** quick-save, **Select + L1** quick-load. While Select is held, Start/L1/R1 are not sent to the game. Turn this off in the Controllers screen if a game needs those combos.
+* **In game hotkeys:** hold **Select + Start** (or press the **Guide/Home** button) for the pause menu (Resume, Save state, Load state, Restart, Sound, Fast-forward, Screenshot, Exit… — the same menu as the top ☰ button); **Select + R1** quick-save, **Select + L1** quick-load. While Select is held, Start/L1/R1 are not sent to the game. Turn this off in the Controllers screen if a game needs those combos.
 * **Library with a controller:** D-pad / left stick moves between games and menu items, **A** opens (Nintendo layout: right button; Xbox layout: bottom button), **B** goes back/closes, **Start** opens the game's options, **Select** opens Settings, **L1/R1** switch the system filter.
 * **Desktop keyboard defaults (Retro Pocket preset):** arrows = D-pad, **X** = A, **Z** = B, **S** = X, **A** = Y, **Q/W** = L/R, **Enter** = Start, **Backspace** = Select, **F5/F9** quick save/load. Remappable.
 * **Tested with a mocked Gamepad API** (`node tests/pads.mjs`, headless Chrome with `navigator.getGamepads` overridden): connect/disconnect, library navigation, remap capture, deadzone, trigger handling, 2-player routing, touch-pad hiding, hotkeys and the pause menu. **Not tested on real hardware:** actual Bluetooth/USB pads, iOS Safari, and the Capacitor Android WebView (it is Chromium, so the same API is available, but the app window must have focus; some pads/OS versions report a non-standard button order — remap in the Controllers screen if so).
@@ -185,6 +199,7 @@ node tests/detect.mjs     # system detection / zip / cue unit tests (no browser)
 node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
 node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
+node tests/ingame.mjs     # in-game ☰ menu, no bottom bar pop-up (headless Chrome, touch/mouse)
 node tests/dstouch.mjs    # DS touchscreen: probe ROM, both cores, synthetic touch/mouse (headless Chrome)
 node tests/hash.mjs       # md5 implementation (no browser)
 node tests/threads.mjs    # PPSSPP/DOSBox cross-origin isolation + regression checks
@@ -215,13 +230,13 @@ www/                      the whole app (static; served by Pages and bundled int
   js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js, js/biosdata.js, js/hash.js  BIOS storage, dialog, open-file table, md5
   bios-open/              the only BIOS-type files in the repo: open-licensed, with licences/
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
-  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog
+  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog   js/ingameui.js  ☰ button settings
   js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
 android/                  Capacitor Android project (generated by `cap add android`, committed)
 capacitor.config.json     appId com.retropocket.app, webDir = www
 scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py, make-system-stubs.py, make-ds-touch-rom.py, systems-table.mjs (README table generator)
-tests/                    e2e, crash, cover, pads, ds, dstouch, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
+tests/                    e2e, crash, cover, pads, ds, dstouch, ingame, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
 .github/workflows/        pages.yml (deploy web) · android.yml (build APK + release)
 ```
 

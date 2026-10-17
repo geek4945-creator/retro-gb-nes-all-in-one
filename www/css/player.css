@@ -15,7 +15,22 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 .crash-box button:first-of-type:not([hidden]), .crash-box #crash-restart { background: #7c5cff; border-color: #7c5cff; }
 .crash-box #crash-resume:not([hidden]) ~ #crash-restart { background: #1f2230; border-color: #2a2e40; }
 .crash-box .ghost { background: none; color: #8c91a8; }
-#menu-btn { position: fixed; z-index: 10; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); background: rgba(20,20,30,.65); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 18px; padding: 6px 12px; font: 600 14px system-ui, sans-serif; opacity: .75; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+/* EmulatorJS' own bottom bar / hamburger / long-press context menu are never shown: all of it lives in our top menu (☰) instead. */
+.ejs_virtualGamepad_open, .ejs_context_menu { display: none !important; }
+/* the bar keeps its layout (EmulatorJS measures its settings panel inside it) but is invisible and untouchable; its functions are called from our menu */
+.ejs_menu_bar { visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; }
+#menu-btn { position: fixed; z-index: 10; top: max(6px, env(safe-area-inset-top)); width: 44px; height: 44px; padding: 0; margin: 0; border: 0; background: none; color: #fff; font: 600 16px system-ui, sans-serif; opacity: .55; transition: opacity .5s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+#menu-btn span { display: grid; place-items: center; width: 32px; height: 32px; margin: 6px; border-radius: 16px; background: rgba(20,20,30,.55); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#menu-btn[data-pos="right"] { right: max(6px, env(safe-area-inset-right)); } #menu-btn[data-pos="left"] { left: max(6px, env(safe-area-inset-left)); } #menu-btn[data-pos="center"] { left: 50%; margin-left: -22px; }
+#menu-btn:active, #menu-btn.awake { opacity: .9; } #menu-btn.faded { opacity: .14; }
+.pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } .pm-grid button[hidden] { display: none; }
+.crash-box .pm-grid button { margin-top: 0; padding: 12px 8px; font-size: 14px; }
+#pmenu { overflow-y: auto; align-items: start; padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); } #pmenu .crash-box { margin: auto 0; }
+#pmpanel { position: fixed; inset: 0; z-index: 95; background: rgba(8,8,14,.96); display: flex; flex-direction: column; touch-action: auto; padding: max(10px, env(safe-area-inset-top)) 12px 12px; } #pmpanel[hidden] { display: none; }
+.pmpanel-bar { display: flex; align-items: center; gap: 12px; color: #eceef7; font: 16px system-ui, sans-serif; } .pmpanel-bar button { padding: 10px 14px; border-radius: 12px; border: 1px solid #2a2e40; background: #1f2230; color: #fff; font-size: 15px; font-weight: 600; }
+#pmpanel-body { flex: 1; overflow: auto; margin-top: 10px; -webkit-overflow-scrolling: touch; }
+#pmpanel-body .ejs_settings_parent { position: static !important; bottom: auto; margin: 0; max-width: 100%; white-space: normal; animation: none; z-index: auto; } #pmpanel-body .ejs_settings_parent::before, #pmpanel-body .ejs_settings_parent::after { display: none; }
+#pmpanel-body #ejs_disksMenu, #pmpanel-body .ejs_disks_parent { position: static !important; }
 #ptoast { position: fixed; z-index: 12; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 50px); background: #2b2f44; color: #fff; padding: 8px 14px; border-radius: 12px; font: 14px system-ui, sans-serif; pointer-events: none; }
 #pmenu { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(8,8,14,.85); padding: 20px; touch-action: auto; }
 #ptoast[hidden], #pmenu[hidden] { display: none; }

@@ -4,6 +4,7 @@ import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
 import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
+import { loadUi, saveUi, UI_POS } from './ingameui.js';
 import { startPadNav } from './padnav.js';
 
 // Where EmulatorJS' loader, UI and cores come from: a PINNED release (see EJS_VERSION in cores.js), not "stable".
@@ -163,9 +164,9 @@ function say(msg) { try { emu().displayMessage(msg, 2000); } catch { ptoast(msg)
 function quickSave() { try { const ok = emu().gameManager.quickSave(slot()); say(ok ? `State saved (slot ${slot()})` : 'Save failed'); return ok; } catch (e) { say('Save failed'); return false; } }
 function quickLoad() { try { emu().gameManager.quickLoad(slot()); say(`State loaded (slot ${slot()})`); } catch (e) { say('Load failed'); } }
 function setMenu(open) {
-  if (!started || crashed) return; menuOpen = open; menuEl.hidden = !open;
+  if (!started || crashed) return; if (!open && panelOpen()) closePanel(); menuOpen = open; menuEl.hidden = !open; wake();
   try { open ? emu().pause(true) : emu().play(true); } catch {}
-  if (open) { const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
+  if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
   window.__rpMenuOpen = open;
 }
 $('#menu-btn').addEventListener('click', () => setMenu(!menuOpen));
@@ -173,11 +174,71 @@ $('#pm-resume').onclick = () => setMenu(false);
 $('#pm-save').onclick = () => { quickSave(); setMenu(false); };
 $('#pm-load').onclick = () => { quickLoad(); setMenu(false); };
 $('#pm-restart').onclick = () => { try { emu().gameManager.restart(); } catch {} setMenu(false); };
+/* ---------- the rest of what EmulatorJS' bottom bar offered (the bar itself is never shown, see player.css) ---------- */
+const barBtn = (re) => { try { return [...emu().elements.menu.querySelectorAll('button')].find((b) => re.test(b.textContent.trim())); } catch { return null; } };
+const barOn = (re) => { const b = barBtn(re); return !!b && b.style.display !== 'none' && !b.hidden; };
+const fsSupported = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function refreshMenu() {
+  const e = emu(); if (!e) return;
+  $('#pm-sound').textContent = `${e.muted ? '🔇' : '🔊'} Sound: ${e.muted ? 'Off' : 'On'}`;
+  $('#pm-ff').textContent = `⏩ Fast-forward: ${e.isFastForward ? 'On' : 'Off'}`;
+  $('#pm-full').hidden = !fsSupported(); $('#pm-full').textContent = isFull() ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
+  $('#pm-cheats').hidden = !barOn(/^cheats?$/i); $('#pm-controls').hidden = !barOn(/control/i);
+  $('#pm-disc').hidden = !(e.diskParent && e.diskParent.style.display !== 'none' && e.gameManager && e.gameManager.getDiskCount() > 1);
+  $('#pm-btnpos').textContent = `📍 Menu button: ${UI_POS[loadUi().pos]}`;
+}
+$('#pm-sound').onclick = () => {
+  const e = emu(); if (e.muted) { if (!e.volume) e.volume = 0.5; e.muted = false; e.setVolume(e.volume); } else { e.muted = true; e.setVolume(0); }
+  refreshMenu();
+};
+$('#pm-ff').onclick = () => { try { emu().changeSettingOption('fastForward', emu().isFastForward ? 'disabled' : 'enabled'); } catch {} refreshMenu(); };
+$('#pm-shot').onclick = () => {
+  try { emu().screenshot((blob, format) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${(rom.title || 'screenshot').replace(/[^\w.-]+/g, '_')}-${Date.now()}.${format || 'png'}`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('Screenshot saved'); }); } catch { say('Screenshot failed'); }
+  setMenu(false);
+};
+// our own fullscreen on the whole page (EmulatorJS would fullscreen only its canvas box and hide this menu)
+$('#pm-full').onclick = () => {
+  const d = document, r = d.documentElement;
+  try { if (isFull()) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else (r.requestFullscreen || r.webkitRequestFullscreen).call(r); } catch {}
+  setMenu(false);
+};
+$('#pm-controls').onclick = () => { setMenu(false); const b = barBtn(/control/i); if (b) b.click(); };
+$('#pm-cheats').onclick = () => { setMenu(false); const b = barBtn(/^cheats?$/i); if (b) b.click(); };
+$('#pm-btnpos').onclick = () => { const o = Object.keys(UI_POS), u = loadUi(); saveUi({ ...u, pos: o[(o.indexOf(u.pos) + 1) % o.length] }); refreshMenu(); };
+// EmulatorJS' settings / disc panels normally pop out of its (hidden) bottom bar: show them in our own full-screen panel
+let panelNode = null, panelHome = null, panelClose = null;
+const panelEl = $('#pmpanel'), panelOpen = () => !panelEl.hidden;
+function openPanel(title, node, close) {
+  if (!node) return; panelNode = node; panelHome = node.parentElement; panelClose = close;
+  $('#pmpanel-title').textContent = title; $('#pmpanel-body').replaceChildren(node); node.style.display = '';
+  menuEl.hidden = true; panelEl.hidden = false; nav.setFocus($('#pmpanel-back'));
+}
+function closePanel() {
+  if (!panelOpen()) return;
+  try { panelClose && panelClose(); } catch {}
+  try { panelNode.style.display = 'none'; panelHome && panelHome.appendChild(panelNode); } catch {}
+  panelEl.hidden = true; panelNode = null; menuEl.hidden = !menuOpen; if (menuOpen) { refreshMenu(); nav.setFocus(menuEl.querySelector('button')); }
+}
+$('#pmpanel-back').onclick = closePanel;
+$('#pm-settings').onclick = () => { const e = emu(); e.settingsMenuOpen = true; openPanel('Emulator settings', e.settingsMenu, () => e.closeSettingsMenu && e.closeSettingsMenu()); };
+$('#pm-disc').onclick = () => { const e = emu(); e.disksMenuOpen = true; openPanel('Disc / disk', e.disksMenu, () => e.closeDisksMenu && e.closeDisksMenu()); };
+
+/* ---------- the ☰ button: position + fade-out from Settings, always one tap away ---------- */
+const mbtn = $('#menu-btn'); let fadeT = 0;
+function wake() { mbtn.classList.remove('faded'); mbtn.classList.add('awake'); clearTimeout(fadeT); if (loadUi().autohide && !menuOpen) fadeT = setTimeout(() => { mbtn.classList.remove('awake'); mbtn.classList.add('faded'); }, 3500); else if (!loadUi().autohide) mbtn.classList.remove('awake'); }
+function applyUi() { mbtn.dataset.pos = loadUi().pos; wake(); }
+addEventListener('rp-ui-change', applyUi); addEventListener('storage', applyUi); applyUi();
+const nearTop = (y) => y < Math.max(70, (parseFloat(getComputedStyle(mbtn).top) || 0) + 56);
+addEventListener('pointerdown', (e) => { if (nearTop(e.clientY)) wake(); }, { capture: true, passive: true });
+addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && nearTop(e.clientY)) wake(); }, { capture: true, passive: true });
+// long-press / right-click context menu of EmulatorJS has nothing we want (Save/Restart live in ☰)
+addEventListener('contextmenu', (e) => e.preventDefault(), true);
 /* DS: quick switches in the pause menu (cycle buttons work with a controller too) */
 function addDsMenu(ds) {
   if (document.getElementById('pm-dsmode')) return;
   const cur = () => ds.loadDs(), paints = [];
-  const mk = (id, get, cycle) => { const b = document.createElement('button'); b.id = id; const paint = () => (b.textContent = get()); b.onclick = () => { cycle(); paint(); }; paint(); paints.push(paint); $('#pm-exit').before(b); };
+  const mk = (id, get, cycle) => { const b = document.createElement('button'); b.id = id; const paint = () => (b.textContent = get()); b.onclick = () => { cycle(); paint(); }; paint(); paints.push(paint); $('#pm-grid').append(b); };
   mk('pm-dsmode', () => `✋ Touch: ${cur().mode === 'direct' ? 'Direct' : 'Trackpad'}`, () => ds.saveDs({ ...cur(), mode: cur().mode === 'direct' ? 'trackpad' : 'direct' }));
   mk('pm-dslayout', () => `🖥 Screens: ${({ auto: 'Auto', stacked: 'Stacked', stackedSwap: 'Stacked, swapped', side: 'Side by side', sideSwap: 'Side by side, swapped', bottom: 'Bottom only' })[cur().layout] || 'Auto'}`,
     () => { const o = ds.LAYOUT_ORDER; ds.saveDs({ ...cur(), layout: o[(o.indexOf(cur().layout) + 1) % o.length] }); });
@@ -185,9 +246,9 @@ function addDsMenu(ds) {
 }
 $('#pm-exit').onclick = () => { setMenu(false); $('#back').click(); };
 const nav = startPadNav({
-  getFocusables: () => [...document.querySelectorAll(!$('#crash').hidden ? '#crash button:not([hidden])' : '#pmenu button')],
+  getFocusables: () => [...document.querySelectorAll(!$('#crash').hidden ? '#crash button:not([hidden])' : panelOpen() ? '#pmpanel-back' : '#pmenu button:not([hidden])')],
   enabled: () => menuOpen || !$('#crash').hidden,
-  onBack: () => { if (menuOpen) setMenu(false); },
+  onBack: () => { if (panelOpen()) closePanel(); else if (menuOpen) setMenu(false); },
 });
 
 // hotkeys: Select+Start (hold 0.5 s) or Guide = menu; Select+R1 = quick save; Select+L1 = quick load
@@ -262,7 +323,7 @@ requestAnimationFrame(hotkeys);
   }
   window.EJS_ready = () => { status.hidden = true; };
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
+  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
   if (params.get('resume') === '1') {
     const st = await db.getState(rom.id);

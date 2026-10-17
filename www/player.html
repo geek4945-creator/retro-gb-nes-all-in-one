@@ -14,8 +14,8 @@
 </head>
 <body>
   <div id="game"></div>
-  <button id="back" aria-label="Back to library">‹ Library</button>
-  <button id="menu-btn" aria-label="Game menu">☰</button>
+  <button id="back" aria-label="Back to library" hidden tabindex="-1">‹ Library</button>
+  <button id="menu-btn" aria-label="Game menu" data-pos="right"><span>☰</span></button>
   <div id="ptoast" hidden></div>
   <div id="pmenu" hidden role="dialog" aria-label="Game menu">
     <div class="crash-box">
@@ -24,10 +24,25 @@
       <button id="pm-save">Save state</button>
       <button id="pm-load">Load state</button>
       <button id="pm-restart">Restart game</button>
+      <div id="pm-grid" class="pm-grid">
+        <button id="pm-sound">🔊 Sound: On</button>
+        <button id="pm-ff">⏩ Fast-forward: Off</button>
+        <button id="pm-shot">📸 Screenshot</button>
+        <button id="pm-full">⛶ Fullscreen</button>
+        <button id="pm-controls">🎮 Controls…</button>
+        <button id="pm-cheats">🧪 Cheats…</button>
+        <button id="pm-disc">💿 Disc / disk…</button>
+        <button id="pm-settings">⚙ Emulator settings…</button>
+        <button id="pm-btnpos">📍 Menu button: Top-right</button>
+      </div>
       <button id="pm-exit" class="ghost">Exit to library</button>
       <p class="hint">Controller: <b>Select + Start</b> (hold) menu · <b>Select + R1</b> quick save · <b>Select + L1</b> quick load</p>
       <p id="pm-hint" class="hint"></p>
     </div>
+  </div>
+  <div id="pmpanel" hidden role="dialog" aria-label="Emulator panel">
+    <div class="pmpanel-bar"><button id="pmpanel-back">‹ Back</button><b id="pmpanel-title"></b></div>
+    <div id="pmpanel-body"></div>
   </div>
   <div id="status">Loading…</div>
   <div id="banner" hidden></div>

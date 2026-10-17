@@ -24,7 +24,7 @@ try {
   await step('empty state visible', async () => assert(await page.$eval('#empty', (e) => !e.hidden)));
   await step('service worker registers + shell cached', async () => {
     await page.evaluate(() => navigator.serviceWorker.ready); await sleep(800);
-    const n = await page.evaluate(async () => (await (await caches.open('retro-pocket-shell-v4')).keys()).length);
+    const n = await page.evaluate(async () => (await (await caches.open((await caches.keys()).find((k) => k.startsWith('retro-pocket-shell-')))).keys()).length);
     assert(n >= 10, 'cached ' + n); return n + ' files';
   });
   await step('manifest + apple meta', async () => {
@@ -53,7 +53,7 @@ try {
     return JSON.stringify(info);
   });
   await step('exit saves auto-resume state', async () => {
-    await page.click('#back'); await page.waitForFunction(() => location.pathname.endsWith('index.html'), { timeout: 8000 });
+    await page.evaluate(() => document.getElementById('back').click()); await page.waitForFunction(() => location.pathname.endsWith('index.html'), { timeout: 8000 });
     await page.waitForSelector('.resume', { timeout: 5000 });
     await page.screenshot({ path: 'tests/out/library.png' });
   });

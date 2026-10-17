@@ -217,6 +217,19 @@ async function suite(core) {
     await vp(390, 844, 2); await sleep(1000);
   });
 
+  await step(T('NO BOTTOM BAR: dead-zone touches on DS do nothing (no EmulatorJS bar, no stylus contact); ☰ at the top stays usable and does not steal bottom-screen taps'), async () => {
+    await setDs({ mode: 'direct', layout: 'stacked', speed: 1.5 }); await sleep(600);
+    const g = await geo(); const dz = await page.evaluate(() => { const o = []; for (let y = 600; y < innerHeight; y += 20) for (let x = 6; x < innerWidth; x += 20) { const e = document.elementFromPoint(x, y); if (e && e.id === 'ds-touch') o.push([x, y]); } return o; });
+    const out = dz.filter(([x, y]) => !(g.bottom.x <= x && x <= g.bottom.x + g.bottom.w && g.bottom.y <= y && y <= g.bottom.y + g.bottom.h));
+    assert(out.length > 0, 'no dead-zone point found'); const pick = [out[0], out[out.length >> 1], out[out.length - 1]];
+    for (const [x, y] of pick) { const r = await tapAt(x, y); assert(r.down === 0, `dead-zone tap ${x},${y} reached the stylus`); }
+    const bar = await page.evaluate(() => { const b = document.querySelector('.ejs_menu_bar'); return { vis: getComputedStyle(b).visibility, pe: getComputedStyle(b).pointerEvents, hidden: b.classList.contains('ejs_menu_bar_hidden'), menu: document.getElementById('pmenu').hidden, paused: !!EJS_emulator.paused }; });
+    assert(bar.vis === 'hidden' && bar.pe === 'none' && bar.menu && !bar.paused, JSON.stringify(bar));
+    const [bx, by] = rel(g.bottom, 0.5, 0.5), r2 = await tapAt(bx, by); assert(r2.down === 1, 'bottom screen tap still works');
+    const btn = await page.evaluate(() => { const r = document.getElementById('menu-btn').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    const r3 = await tapAt(btn[0], btn[1]); await sleep(300); assert(await page.evaluate(() => !document.getElementById('pmenu').hidden), '☰ opens the menu on DS'); assert(r3.down === 0, '☰ tap must not reach the stylus');
+    await page.evaluate(() => document.getElementById('pm-resume').click()); await sleep(200);
+  });
   await step(T('PAUSE MENU: DS quick switches change mode/layout live; settings persist; the pause menu stops touch forwarding'), async () => {
     await setDs({ mode: 'direct', layout: 'stacked' });
     await page.click('#menu-btn'); await page.waitForSelector('#pmenu:not([hidden])');
