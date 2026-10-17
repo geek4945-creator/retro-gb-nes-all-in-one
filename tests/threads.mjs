@@ -1,5 +1,5 @@
 // Cross-origin isolation for threaded cores (PPSSPP, DOSBox Pure) on a plain static host (no COOP/COEP headers from the server),
-// and proof that it does not disturb the other cores or the library page. Needs network (EmulatorJS CDN, api.github.com).
+// and proof that it does not disturb the other cores or the library page. Needs network (EmulatorJS CDN, raw.githubusercontent.com).
 import puppeteer from 'puppeteer-core';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -61,10 +61,10 @@ try {
     const s = await page.evaluate(() => ({ iso: self.crossOriginIsolated, url: location.search, thr: window.EJS_threads }));
     assert(s.iso === false && !/iso=/.test(s.url) && s.thr === false && b > a, JSON.stringify(s) + ` frames ${a}->${b}`);
   });
-  await step('library page after an isolated visit is not isolated and can still reach GitHub art APIs (CORS intact)', async () => {
+  await step('library page after an isolated visit is not isolated and can still read cross-origin art (CORS intact)', async () => {
     await page.goto(base + 'index.html', { waitUntil: 'networkidle0' });
-    const r = await page.evaluate(async () => { const x = await fetch('https://api.github.com/repos/libretro-thumbnails/DOS/git/trees/master'); return { iso: self.crossOriginIsolated, status: x.status }; });
-    assert(r.iso === false && (r.status === 200 || r.status === 403), JSON.stringify(r));   // 403 = anonymous rate limit, still a CORS-readable response
+    const r = await page.evaluate(async () => { const x = await fetch('https://raw.githubusercontent.com/libretro-thumbnails/Nintendo_-_Game_Boy/master/Named_Boxarts/Tetris%20(World)%20(Rev%201).png'); const b = await x.blob(); return { iso: self.crossOriginIsolated, status: x.status, bytes: b.size }; });
+    assert(r.iso === false && (r.status === 200 || r.status === 404) && r.bytes > 0, JSON.stringify(r));   // a readable response (even a 404 body) proves CORS is intact
   });
   // The stub images are not real games, so PPSSPP/DOSBox may log FS/abort errors after loading them; anything else is a bug.
 await step('no unexpected JS errors', async () => { const odd = errs.filter((e) => !/memory access|abort|table index|ErrnoError/i.test(e)); console.log('  (ignored stub-image errors:', errs.length - odd.length, ')'); assert(!odd.length, odd.join(' | ')); });
