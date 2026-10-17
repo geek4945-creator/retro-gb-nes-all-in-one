@@ -22,4 +22,11 @@ for (const html of ['index.html', 'player.html']) {
   const t = readFileSync(join(root, html), 'utf8');
   for (const r of t.matchAll(/(?:src|href)="([^"#?]+)"/g)) if (!/^(https?:|data:)/.test(r[1]) && !existsSync(join(root, r[1]))) fail(`${html} references missing ${r[1]}`);
 }
+// README systems table must be regenerated after editing www/js/cores.js (npm run systems-table)
+try {
+  const { table } = await import('./systems-table.mjs');
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  if (!readme.includes(table())) fail('README systems table is out of date: run  node scripts/systems-table.mjs --write');
+  else console.log('ok  README systems table in sync');
+} catch (e) { fail('systems table check: ' + e.message); }
 console.log(bad ? `${bad} problem(s)` : 'all checks passed'); process.exit(bad ? 1 : 0);
