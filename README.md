@@ -90,6 +90,8 @@ Android only installs an update **over** an existing app when the new APK is sig
 3. **From now on** just download and open the next APK: it installs **over** the current one and keeps your data. You can also check inside the app: **Settings → 🔄 Check for updates** (shows a *Download APK* banner when a newer build exists).
 4. Before any future uninstall/reinstall (or moving to another phone): **Settings → 💾 Backup & restore → Export backup** (games, states, cover art, BIOS, settings in one ZIP) and import it afterwards. (Some Android app WebViews cannot save downloaded files; if the export does not produce a file, use the web app in Chrome for the backup.)
 
+Verified on two consecutive CI builds (1.0.15 → versionCode 1015, then the next one): identical signer certificate, higher versionCode.
+
 Signing certificate of the stable key (SHA-256): `3D:22:72:23:FC:4D:C7:E5:6E:18:7B:CE:E3:DD:28:11:66:8E:AE:21:0A:9E:E4:C2:AE:EB:17:03:50:F7:12:7C` — `apksigner verify --print-certs RetroPocket-debug.apk` should print exactly this (lower-case, no colons).
 
 ### 🔄 Web app updates
