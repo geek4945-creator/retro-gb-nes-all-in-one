@@ -19,10 +19,12 @@ const MAX_ROM = 1200 * 1024 * 1024;       // PS1/Saturn/3DO disc images are big;
 let roms = [], artMap = new Map(), artUrls = new Map(), resumable = new Set(), filter = 'all', query = '', settings = loadSettings();
 
 /* ---------- toast ---------- */
-let toastTimer;
-function toast(msg) {
+let toastTimer, stickyUntil = 0;
+function toast(msg, { sticky = 0, soft = false } = {}) {       // `soft` messages (art progress) never replace a sticky one
+  if (soft && Date.now() < stickyUntil) return;
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 3200);
+  if (sticky) stickyUntil = Date.now() + sticky;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), sticky || 3200);
 }
 
 /* ---------- library ---------- */
@@ -101,12 +103,12 @@ async function fetchMissingArt(list, { quiet = false, force = false } = {}) {
       const prev = artMap.get(r.id);
       if (!force && prev && prev.status !== 'none') continue;
       if (prev && prev.custom && !force) continue;
-      if (!quiet || list.length > 1) toast(`Fetching cover art… ${done + 1}/${list.length}`);
+      if (!quiet || list.length > 1) toast(`Fetching cover art… ${done + 1}/${list.length}`, { soft: true });
       const rec = await fetchArt(r, { force });
       artMap.set(r.id, rec); if (rec.status !== 'none') got++; done++;
       render();
     }
-    if (!quiet || got) toast(done ? `Cover art: found ${got} of ${done}` : 'Nothing to fetch');
+    if (!quiet || got) toast(done ? `Cover art: found ${got} of ${done}` : 'Nothing to fetch', { soft: true });
   } finally { artBusy = false; }
 }
 $('#btn-art').onclick = () => {
@@ -209,7 +211,7 @@ async function addFiles(files) {
   if (dup) parts.push(`${dup} already in library`);
   if (skipped) parts.push(`${skipped} skipped`);
   if (problems.length) parts.push(problems[0]);
-  if (parts.length) toast(parts.join(' · '));
+  if (parts.length) toast(parts.join(' · '), { sticky: problems.length ? 6000 : 0 });
   if (newRoms.length) fetchMissingArt(roms.filter((r) => newRoms.includes(r.id)), { quiet: true });
 }
 

@@ -24,7 +24,7 @@ try {
   await step('empty state visible', async () => assert(await page.$eval('#empty', (e) => !e.hidden)));
   await step('service worker registers + shell cached', async () => {
     await page.evaluate(() => navigator.serviceWorker.ready); await sleep(800);
-    const n = await page.evaluate(async () => (await (await caches.open('retro-pocket-shell-v3')).keys()).length);
+    const n = await page.evaluate(async () => (await (await caches.open('retro-pocket-shell-v4')).keys()).length);
     assert(n >= 10, 'cached ' + n); return n + ' files';
   });
   await step('manifest + apple meta', async () => {

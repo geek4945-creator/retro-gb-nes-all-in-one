@@ -134,7 +134,8 @@ function syncPads({ announce = true } = {}) {
   if (sig === padSig) return; const had = padSig.split('|').filter(Boolean).length; padSig = sig;
   const slots = assignPlayers(pads, cfg);
   if (e && Array.isArray(e.gamepadSelection)) {
-    e.gamepadSelection = slots.map((g) => (g ? `${g.id}_${g.index}` : ''));
+    const maxP = (rom && MAX_PLAYERS[rom.system]) || 4;               // systems with fewer ports ignore extra controllers
+    e.gamepadSelection = slots.map((g, i) => (g && i < maxP ? `${g.id}_${g.index}` : ''));
     try { e.updateGamepadLabels && e.updateGamepadLabels(); } catch {}
   }
   window.__rpPlayers = slots.map((g) => (g ? g.id : null));
@@ -164,7 +165,7 @@ function quickLoad() { try { emu().gameManager.quickLoad(slot()); say(`State loa
 function setMenu(open) {
   if (!started || crashed) return; menuOpen = open; menuEl.hidden = !open;
   try { open ? emu().pause(true) : emu().play(true); } catch {}
-  if (open) { const first = menuEl.querySelector('button'); nav.setFocus(first); }
+  if (open) { const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
   window.__rpMenuOpen = open;
 }
 $('#menu-btn').addEventListener('click', () => setMenu(!menuOpen));
@@ -222,7 +223,7 @@ requestAnimationFrame(hotkeys);
   const file = new File([rom.data], rom.file, { type: 'application/octet-stream' });
   try {
     const bios = await buildBios(rom.system);                       // user-supplied BIOS from IndexedDB, never bundled
-    if (bios) { window.EJS_biosUrl = bios.file; window.EJS_dontExtractBIOS = bios.raw; window.__rpBios = bios.names; }
+    if (bios) { window.EJS_biosUrl = URL.createObjectURL(bios.file); window.__rpBios = bios.names; }
   } catch (e) { console.warn('BIOS load failed', e); }
   if (sys.heavy && !params.get('switched')) { const b = $('#banner'); b.textContent = `⚠ ${sys.label} is demanding — it may run slowly on phones.`; b.hidden = false; setTimeout(() => (b.hidden = true), 6000); }
   window.EJS_player = '#game';

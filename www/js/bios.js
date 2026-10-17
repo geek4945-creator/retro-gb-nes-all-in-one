@@ -43,11 +43,15 @@ export async function biosStatus(system) {
   return { spec, have, needs: req.length > 0 && !req.some((x) => have.includes(x.name)) };
 }
 
-/** What to hand to EmulatorJS for this system: { file, raw } or null when the user stored no BIOS. */
+/**
+ * What to hand to EmulatorJS for this system: { file, names } or null when the user stored no BIOS.
+ * EmulatorJS unpacks the BIOS archive into the emulator's root directory (where cores look for BIOS files). We always send a stored ZIP
+ * of the user's files; files that must stay zipped (Neo Geo `neogeo.zip`, CD-i `cdimono1.zip`) simply travel as an inner ZIP, which
+ * EmulatorJS leaves untouched. EmulatorJS only accepts a URL string for BIOS, so the player passes a blob: URL.
+ */
 export async function buildBios(system) {
   const spec = biosSpec(system); if (!spec) return null;
   const stored = await db.biosFor(biosKey(system)); if (!stored.length) return null;
-  if (spec.mode === 'raw') { const b = stored[0]; return { file: new File([b.data], b.name), raw: true, names: [b.name] }; }
   const zip = await storedZip(stored.map((b) => ({ name: b.name, data: new Uint8Array(b.data) })));
-  return { file: new File([zip], 'bios.zip', { type: 'application/zip' }), raw: false, names: stored.map((b) => b.name) };
+  return { file: new File([zip], 'bios.zip', { type: 'application/zip' }), names: stored.map((b) => b.name) };
 }
