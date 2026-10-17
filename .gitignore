@@ -10,3 +10,5 @@ android/.idea/
 *.apk
 *.zip
 .DS_Store
+*.jks
+*.p12

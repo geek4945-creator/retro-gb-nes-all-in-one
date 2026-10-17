@@ -63,3 +63,8 @@ export async function sha256Hex(buf) {
   for (let i = 0; i < u.length; i++) { h ^= u[i]; h = Math.imul(h, 16777619) >>> 0; }
   return 'f' + h.toString(16) + u.length.toString(16);
 }
+
+// generic access used by the backup/restore (export & import of the whole library)
+export const keysRaw = (store) => tx(store, 'readonly', (s) => s.getAllKeys());
+export const getRaw = (store, key) => tx(store, 'readonly', (s) => s.get(key));
+export const putRaw = (store, rec) => tx(store, 'readwrite', (s) => s.put(rec));

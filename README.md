@@ -77,6 +77,25 @@ The first launch of each system downloads its core (~1–4 MB) from the Emulator
 
 **Option A – APK:** download `RetroPocket-debug.apk` from the repo's **Releases** page (rolling `latest` release), or from the newest run in the **Actions → Build Android APK** tab (artifact `RetroPocket-debug-apk`). Open it and allow *Install unknown apps* when asked.
 
+### 📲 Installing and updating the APK (read this once)
+
+Android only installs an update **over** an existing app when the new APK is signed with the **same key** and has a **higher versionCode**. Earlier builds were signed with a throw-away debug key that CI generated fresh on every run, so updating over them failed with *"App not installed" / "package conflicts"*. That is fixed for all builds from now on:
+
+* **One stable signing key** for every build: a private keystore stored as GitHub Actions secrets (`RP_KEYSTORE_B64`, `RP_KEYSTORE_PASSWORD`, `RP_KEY_ALIAS`, `RP_KEY_PASSWORD`; never in the repo). If the secrets are missing (forks, PRs) the build falls back to a committed, *public* debug keystore (`android/app/retropocket-fallback.keystore`) — consistent, but **not secret and not the same key**, so only use release-key builds for your own device.
+* **Increasing version:** `versionCode = 1000 + number of commits`, `versionName = 1.0.<commits>-<sha>`; `applicationId` stays `com.retropocket.app`. The workflow runs `apksigner verify` and checks the versionCode of the built APK; the signing-certificate SHA-256 and version are printed in the job summary and the release notes.
+
+**Exact steps**
+1. **One time only (because of the old key):** uninstall the old *Retro Pocket* app (Settings → Apps → Retro Pocket → Uninstall). ⚠️ This deletes the library, save states and BIOS files, which live in the app's WebView storage — the old builds have no export function, so they cannot be saved; keep your original ROM files. (Alternatively keep using the web app/PWA, whose data is separate.)
+2. Install the newest `RetroPocket-debug.apk` from the Releases page.
+3. **From now on** just download and open the next APK: it installs **over** the current one and keeps your data. You can also check inside the app: **Settings → 🔄 Check for updates** (shows a *Download APK* banner when a newer build exists).
+4. Before any future uninstall/reinstall (or moving to another phone): **Settings → 💾 Backup & restore → Export backup** (games, states, cover art, BIOS, settings in one ZIP) and import it afterwards. (Some Android app WebViews cannot save downloaded files; if the export does not produce a file, use the web app in Chrome for the backup.)
+
+Signing certificate of the stable key (SHA-256): `3D:22:72:23:FC:4D:C7:E5:6E:18:7B:CE:E3:DD:28:11:66:8E:AE:21:0A:9E:E4:C2:AE:EB:17:03:50:F7:12:7C` — `apksigner verify --print-certs RetroPocket-debug.apk` should print exactly this (lower-case, no colons).
+
+### 🔄 Web app updates
+
+The service worker is **network-first** (online you always get the newest files; the cache is only the offline fallback) and a new version installs in the background and **waits**: you get *Update available — Reload* (and **Settings → Check for updates**) instead of half-old/half-new files. Every deployment is stamped with the commit count (`www/build-info.json`, `www/js/version.js`, service-worker `VERSION`). Tested by `node tests/update.mjs`.
+
 **Option B – PWA (no APK):** open the Pages URL above in **Chrome** → ⋮ menu → **Install app** / **Add to Home screen**.
 
 ## 🖼 Cover art
@@ -199,6 +218,7 @@ node tests/detect.mjs     # system detection / zip / cue unit tests (no browser)
 node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
 node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
+node tests/update.mjs     # service-worker updates (no stale files, banner, offline), APK update prompt, backup/restore
 node tests/ingame.mjs     # in-game ☰ menu, no bottom bar pop-up (headless Chrome, touch/mouse)
 node tests/dstouch.mjs    # DS touchscreen: probe ROM, both cores, synthetic touch/mouse (headless Chrome)
 node tests/hash.mjs       # md5 implementation (no browser)
@@ -230,17 +250,18 @@ www/                      the whole app (static; served by Pages and bundled int
   js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js, js/biosdata.js, js/hash.js  BIOS storage, dialog, open-file table, md5
   bios-open/              the only BIOS-type files in the repo: open-licensed, with licences/
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
-  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog   js/ingameui.js  ☰ button settings
+  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog   js/ingameui.js  ☰ button settings   js/updates.js  update checks/banner   js/backup.js  export/import backup   js/version.js  stamped build number
   js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
 android/                  Capacitor Android project (generated by `cap add android`, committed)
 capacitor.config.json     appId com.retropocket.app, webDir = www
-scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py, make-system-stubs.py, make-ds-touch-rom.py, systems-table.mjs (README table generator)
-tests/                    e2e, crash, cover, pads, ds, dstouch, ingame, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
+scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py, make-system-stubs.py, make-ds-touch-rom.py, stamp-build.mjs, systems-table.mjs (README table generator)
+tests/                    e2e, crash, cover, pads, ds, dstouch, ingame, update, soak, library, threads, systems (headless Chrome) + detect, padsys (Node); tiny generated stub images
 .github/workflows/        pages.yml (deploy web) · android.yml (build APK + release)
 ```
 
 ## Troubleshooting
 * *"Could not load the emulator"* — you're offline and haven't played that system yet; connect once to cache the core.
 * *No sound on iPhone* — tap the on-screen Start button / screen once; also check the ringer switch.
+* *"App not installed" when updating the APK* — see *Installing and updating the APK*: uninstall the old app once (it was signed with a different key), then install the new APK; later updates install over it.
 * *Game crashed* — use the on-screen *Resume* / *Try another core*. *A game won't start* — try the other core via the **⋯** menu → *Emulator core*. Zipped ROMs are supported by most cores; if the system isn't recognised you'll be asked to pick one.

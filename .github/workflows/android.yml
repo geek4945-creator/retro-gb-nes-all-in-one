@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # full history: versionCode = 1000 + commit count
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v4
@@ -25,13 +26,45 @@ jobs:
         run: |
           npm ci
           node scripts/check.mjs
+      - name: Stamp build number (versionCode / versionName / build-info.json)
+        run: node scripts/stamp-build.mjs
       - name: Sync web app into the Android project
         run: npx cap sync android
-      - name: Build debug APK
+      - name: Prepare the stable signing key
+        env:
+          KS_B64: ${{ secrets.RP_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.RP_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RP_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.RP_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/retropocket-release.jks"
+            {
+              echo "RP_KEYSTORE=$RUNNER_TEMP/retropocket-release.jks"
+              echo "RP_KEYSTORE_PASSWORD=$KS_PASS"; echo "RP_KEY_ALIAS=$KEY_ALIAS"; echo "RP_KEY_PASSWORD=$KEY_PASS"
+              echo "RP_KEY_KIND=release key (secret)"
+            } >> "$GITHUB_ENV"
+            echo "::add-mask::$KS_PASS"
+          else
+            echo "RP_KEY_KIND=committed FALLBACK key (secrets not available: fork/PR)" >> "$GITHUB_ENV"
+            echo "::warning::Release signing secrets are missing; using the committed fallback key. This APK will NOT update over APKs signed with the release key."
+          fi
+      - name: Build APK (stable key, increasing versionCode)
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
+      - name: Verify signature and version
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee sign.txt
+          SHA=$(grep -m1 'certificate SHA-256 digest' sign.txt | awk '{print $NF}')
+          "$BT/aapt2" dump badging "$APK" | grep -m1 '^package:' | tee badging.txt
+          VC=$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" badging.txt)
+          [ "$VC" = "$RP_VERSION_CODE" ] || { echo "versionCode mismatch: $VC vs $RP_VERSION_CODE"; exit 1; }
+          echo "SIGNER_SHA256=$SHA" >> "$GITHUB_ENV"
+          { echo "### APK"; echo "* key: $RP_KEY_KIND"; echo "* signing certificate SHA-256: \`$SHA\`"; echo "* versionCode: $VC, versionName: $RP_VERSION_NAME"; } >> "$GITHUB_STEP_SUMMARY"
       - name: Name the APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk RetroPocket-debug.apk
       - uses: actions/upload-artifact@v4
@@ -52,5 +85,5 @@ jobs:
           fi
           gh release create "$TAG" RetroPocket-debug.apk $EXTRA \
             --title "Retro Pocket $TAG (debug APK)" \
-            --notes "Debug-signed Android APK. Enable *Install unknown apps* for your browser/file manager, then open the APK. Bring your own ROMs." \
+            --notes "Android APK (build $RP_BUILD, versionCode $RP_VERSION_CODE, version $RP_VERSION_NAME). Signed with the project's stable key (certificate SHA-256 $SIGNER_SHA256), so it installs OVER the previous build and keeps your library. First install of this signing key (or coming from the older builds): uninstall the old app once. Enable *Install unknown apps* for your browser/file manager, then open the APK. Bring your own ROMs." \
             --target "$GITHUB_SHA"

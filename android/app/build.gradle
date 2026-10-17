@@ -7,8 +7,9 @@ android {
         applicationId "com.retropocket.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // every CI build gets a higher versionCode (1000 + number of commits) so a newer APK always installs OVER the old one
+        versionCode Integer.parseInt(System.getenv('RP_VERSION_CODE') ?: '1')
+        versionName System.getenv('RP_VERSION_NAME') ?: '1.0-local'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // ONE stable signing key for every build (Android refuses to update an app signed with a different key).
+    // CI passes the private key via RP_KEYSTORE / RP_KEYSTORE_PASSWORD / RP_KEY_ALIAS / RP_KEY_PASSWORD (GitHub Actions secrets).
+    // Without them (local builds, forks) the committed fallback keystore is used: consistent, but NOT secret.
+    signingConfigs {
+        retro {
+            storeFile file(System.getenv('RP_KEYSTORE') ?: 'retropocket-fallback.keystore')
+            storePassword System.getenv('RP_KEYSTORE_PASSWORD') ?: 'android'
+            keyAlias System.getenv('RP_KEY_ALIAS') ?: 'fallback'
+            keyPassword System.getenv('RP_KEY_PASSWORD') ?: 'android'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.retro
+        }
         release {
+            signingConfig signingConfigs.retro
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

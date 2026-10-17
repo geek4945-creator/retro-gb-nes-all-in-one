@@ -3,7 +3,7 @@ name: Deploy web app to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['www/**', '.github/workflows/pages.yml']
+    paths: ['www/**', 'scripts/stamp-build.mjs', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -23,10 +23,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # full history: the build number is the commit count
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Static checks
         run: node scripts/check.mjs
+      - name: Stamp build number (build-info.json + service-worker version)
+        run: node scripts/stamp-build.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: www }
