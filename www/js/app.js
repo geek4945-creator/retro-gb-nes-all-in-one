@@ -2,6 +2,9 @@ import { SYSTEMS, CORE_LABELS, systemFor, titleFrom, defaultCore, loadSettings, 
 import * as db from './db.js';
 import { fetchArt, artUrl } from './art.js';
 import { openCoverPicker } from './cover.js';
+import { openControllers } from './padsui.js';
+import { startPadNav } from './padnav.js';
+import { rawPads, padName } from './pads.js';
 
 const $ = (s) => document.querySelector(s);
 const el = (tag, props = {}, ...kids) => {
@@ -223,6 +226,7 @@ $('#btn-settings').onclick = async () => {
     mk('Default Nintendo DS core (new games)', 'dsCore', [['desmume2015', 'DeSmuME 2015 (lighter)'], ['melonds', 'melonDS (accurate, heavy)']]),
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
+    el('button', { className: 'row', id: 'btn-controllers', textContent: '🎮 Controllers…', onclick: () => { d.close(); openControllers(); } }),
     el('button', { className: 'row', textContent: '🖼 Fetch all missing cover art', onclick: () => { d.close(); $('#btn-art').click(); } }),
     el('p', { className: 'muted', textContent: est && est.usage != null ? `Storage used: ${(est.usage / 1048576).toFixed(1)} MB` : '' }),
     el('p', { className: 'muted small', textContent: 'Retro Pocket runs RetroArch-based emulator cores (via EmulatorJS) entirely in your browser. Bring your own legally obtained ROMs — none are included. GPL-3.0.' }),
@@ -244,3 +248,34 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 addEventListener('pageshow', (e) => { if (e.persisted) refresh(); });
 refresh().catch((e) => { console.error(e); toast('Could not open local storage (private mode?).'); });
+
+/* ---------- physical controllers: connect toasts + library navigation ---------- */
+let padSig = '';
+setInterval(() => {
+  const pads = rawPads(), sig = pads.map((g) => g.id + '#' + g.index).join('|');
+  if (sig === padSig) return;
+  const had = padSig.split('|').filter(Boolean).length; padSig = sig;
+  if (pads.length > had) toast(`🎮 ${padName(pads[pads.length - 1].id)} connected — D-pad to move, A to play`);
+  else if (pads.length < had) toast('🎮 Controller disconnected');
+}, 600);
+const openDialog = () => [...document.querySelectorAll('dialog[open]')].pop();
+const padNav = startPadNav({
+  getFocusables: () => {
+    const d = openDialog();
+    if (d) return [...d.querySelectorAll('button:not([hidden]):not(:disabled), select, input[type=range], input[type=checkbox], summary, .cv-tile')];
+    return [...document.querySelectorAll('#library .card')];
+  },
+  onBack: () => { const d = openDialog(); if (d) d.close(); },
+  onStart: () => { if (openDialog()) return; const c = document.activeElement; if (c && c.classList && c.classList.contains('card')) c.querySelector('.more').click(); },
+  onSelect: () => { if (!openDialog()) $('#btn-settings').click(); },
+  onL: () => cycleChip(-1), onR: () => cycleChip(1),
+  enabled: () => !location.hash.includes('nopad'),
+});
+function cycleChip(dir) {
+  if (openDialog()) return;
+  const chips = [...document.querySelectorAll('#chips .chip')]; if (chips.length < 2) return;
+  const i = chips.findIndex((c) => c.classList.contains('on'));
+  chips[(i + dir + chips.length) % chips.length].click();
+  const first = document.querySelector('#library .card'); if (first) padNav.setFocus(first);
+}
+addEventListener('pointerdown', () => document.querySelectorAll('.pad-focus').forEach((x) => x.classList.remove('pad-focus')), { passive: true });

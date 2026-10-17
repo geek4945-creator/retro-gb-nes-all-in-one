@@ -15,6 +15,19 @@
 <body>
   <div id="game"></div>
   <button id="back" aria-label="Back to library">‹ Library</button>
+  <button id="menu-btn" aria-label="Game menu">☰</button>
+  <div id="ptoast" hidden></div>
+  <div id="pmenu" hidden role="dialog" aria-label="Game menu">
+    <div class="crash-box">
+      <h2>Paused</h2>
+      <button id="pm-resume">▶ Resume</button>
+      <button id="pm-save">Save state</button>
+      <button id="pm-load">Load state</button>
+      <button id="pm-restart">Restart game</button>
+      <button id="pm-exit" class="ghost">Exit to library</button>
+      <p class="hint">Controller: <b>Select + Start</b> (hold) menu · <b>Select + R1</b> quick save · <b>Select + L1</b> quick load</p>
+    </div>
+  </div>
   <div id="status">Loading…</div>
   <div id="banner" hidden></div>
   <div id="crash" hidden role="alertdialog" aria-labelledby="crash-title">

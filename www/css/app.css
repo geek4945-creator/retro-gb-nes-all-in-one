@@ -64,3 +64,10 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .cv-canvas { width: 240px; height: 320px; border-radius: 10px; border: 1px solid var(--line); touch-action: none; background: #0b0c10; }
 .cv-zoom { display: flex; gap: 10px; align-items: center; width: 240px; } .cv-zoom input { flex: 1; }
 .cv-remote { max-width: 240px; max-height: 320px; border-radius: 10px; }
+
+.pad-focus { outline: 3px solid #ffd54a !important; outline-offset: 2px; }
+.pad-list { display: grid; gap: 10px; } .pad-item { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; } .pad-name { font-weight: 700; }
+.pad-live { margin-top: 6px; word-break: break-word; min-height: 2.6em; }
+.cv-main h4 { margin: 18px 0 6px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
+.pad-map { display: grid; gap: 6px; margin-top: 8px; } .map-head, .map-row { display: grid; grid-template-columns: 1.1fr 1.4fr 1.2fr; gap: 8px; align-items: center; } .map-head { font-size: 12px; color: var(--muted); }
+.map-row .btn { padding: 8px 10px; font-size: 13px; text-align: left; } .btn.capturing { background: var(--accent); }

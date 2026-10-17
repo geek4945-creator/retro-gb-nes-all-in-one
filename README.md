@@ -10,7 +10,7 @@ An all-in-one retro emulator that runs **in the browser** (installable on iPhone
 | SNES (bonus) | `.sfc` `.smc` `.swc` `.fig` | Snes9x |
 | Nintendo DS ("Gameboy DS") | `.nds` | DeSmuME 2015 (or melonDS) — dual-screen layout, tap the bottom screen to use the touchscreen |
 
-Features: automatic **box art** (+ a *Change cover* picker with web search, URL paste and upload), crash protection with automatic core fallback, ROM library saved on your device (IndexedDB), add many ROMs at once, search + system filters, auto-detected core per file, on-screen touch gamepad, save states, battery saves (flushed every 30 s), **auto-resume** (your session is snapshotted when you leave a game), dark mobile-first UI, offline shell via service worker.
+Features: **Bluetooth/USB controller support**, automatic **box art** (+ a *Change cover* picker with web search, URL paste and upload), crash protection with automatic core fallback, ROM library saved on your device (IndexedDB), add many ROMs at once, search + system filters, auto-detected core per file, on-screen touch gamepad, save states, battery saves (flushed every 30 s), **auto-resume** (your session is snapshotted when you leave a game), dark mobile-first UI, offline shell via service worker.
 
 ## ⚖️ Legal
 
@@ -49,6 +49,18 @@ The first launch of each system downloads its core (~1–4 MB) from the Emulator
 * **No special headers needed.** EmulatorJS only requires threads (`SharedArrayBuffer`, i.e. COOP/COEP headers) for PPSSPP and DOSBox Pure; both DS cores run in the single-threaded build used here, so GitHub Pages works as-is and no `coi-serviceworker` hack is needed.
 * Layout is top/bottom (portrait-friendly); drag/tap on the lower screen to use the stylus. DS save states are large, so auto-resume snapshots are taken only when you leave a game, not periodically.
 
+## 🕹 Controllers (Bluetooth / USB gamepads)
+
+Uses the browser **Gamepad API**, so Xbox, PlayStation (DualShock 4 / DualSense), Switch Pro, 8BitDo, MFi and generic pads work wherever the browser sees them: **iPhone/iPad Safari 13+ (Bluetooth pairing in Settings → Bluetooth)**, Android Chrome / the Android app (Chromium WebView), and desktop. Press any button after connecting — browsers only reveal a controller after its first input.
+
+* **Auto-detect:** a toast appears on connect/disconnect (library and in game); the first pads become Player 1, 2, 3, 4 in connection order. The on-screen touch pad is **hidden while a controller is connected**, comes back when you touch the screen (and hides again on the next controller input), and returns on disconnect.
+* **Settings → 🎮 Controllers…** (not an About tab): connected pads with a live input readout, per-pad **player assignment** (Auto / Player 1–4 / Off), **button layout** (*Nintendo positions*: right = A, bottom = B — or *Xbox labels*), **stick deadzone**, left-stick-as-D-pad, hide-touch-pad, hotkeys on/off, **keyboard** controls for desktop with a preset, and a **per-player remap table** (tap a control, then press the pad button / key you want; "Reset" per player). Mappings are stored in `localStorage` (`rp.pad`) and applied to EmulatorJS (`EJS_defaultControls` + re-applied after start) for **every system**, all four players. Games support 1 player (GB/GBC/GBA/DS) or 2 (NES/SNES) at the moment.
+* **Analog sticks / triggers:** a deadzone (radial) is applied to the sticks before EmulatorJS sees them. NES/GB/GBA/SNES/DS are digital, so the left stick acts as a D-pad (and "hat" D-pads that browsers expose as an axis are decoded); analog triggers act as L2/R2 buttons. For analog systems (N64/PS1/PSP — not bundled yet, code path is in `js/pads.js` `ANALOG_SYSTEMS`) stick axes are passed through unmodified apart from the deadzone.
+* **In game hotkeys:** hold **Select + Start** (or press the **Guide/Home** button) for the pause menu (Resume, Save state, Load state, Restart, Exit — also reachable with the ☰ button); **Select + R1** quick-save, **Select + L1** quick-load. While Select is held, Start/L1/R1 are not sent to the game. Turn this off in the Controllers screen if a game needs those combos.
+* **Library with a controller:** D-pad / left stick moves between games and menu items, **A** opens (Nintendo layout: right button; Xbox layout: bottom button), **B** goes back/closes, **Start** opens the game's options, **Select** opens Settings, **L1/R1** switch the system filter.
+* **Desktop keyboard defaults (Retro Pocket preset):** arrows = D-pad, **X** = A, **Z** = B, **S** = X, **A** = Y, **Q/W** = L/R, **Enter** = Start, **Backspace** = Select, **F5/F9** quick save/load. Remappable.
+* **Tested with a mocked Gamepad API** (`node tests/pads.mjs`, headless Chrome with `navigator.getGamepads` overridden): connect/disconnect, library navigation, remap capture, deadzone, trigger handling, 2-player routing, touch-pad hiding, hotkeys and the pause menu. **Not tested on real hardware:** actual Bluetooth/USB pads, iOS Safari, and the Capacitor Android WebView (it is Chromium, so the same API is available, but the app window must have focus; some pads/OS versions report a non-standard button order — remap in the Controllers screen if so).
+
 ## 🛡 Crash protection
 
 The player pins EmulatorJS to a fixed version (`4.2.3`, see `EJS_VERSION` in `www/js/cores.js`), flushes battery saves only while a game is running in the foreground (guarded, never throws), and only loads an auto-resume snapshot taken by the **same core**. If a core aborts or freezes, the **Game crashed** screen offers *Resume from last auto-save*, *Restart*, *Try another core* and *Back to library*; a crash in the first 15 s switches cores automatically once. NES now defaults to **Nestopia**; FCEUmm is a per-game option.
@@ -65,6 +77,7 @@ npm run check             # syntax + manifest + service-worker precache checks
 npm test                  # headless-Chrome end-to-end test (needs Chrome + internet for the CDN cores)
 node tests/crash.mjs      # crash screen / fallback / watchdog tests
 node tests/cover.mjs      # box art + cover picker tests (real network)
+node tests/pads.mjs       # controller tests with a mocked Gamepad API
 node tests/soak.mjs tests/fixtures/nes-test.nes nestopia 5   # N-minute soak
 
 # Android APK (needs JDK 21 and the Android SDK; ANDROID_HOME set)
@@ -89,11 +102,12 @@ www/                      the whole app (static; served by Pages and bundled int
   player.html, css/player.css  game screen      js/player.js  launches EmulatorJS, saves/resumes
   js/cores.js             extension → system → core mapping   js/db.js  IndexedDB (ROMs, resume states, art)
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
+  js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
 android/                  Capacitor Android project (generated by `cap add android`, committed)
 capacitor.config.json     appId com.retropocket.app, webDir = www
 scripts/                  make-icons.py, make-android-assets.py, check.mjs, make-test-rom.py
-tests/                    e2e.mjs, crash.mjs, cover.mjs, soak.mjs (headless Chrome; tiny generated test ROMs)
+tests/                    e2e.mjs, crash.mjs, cover.mjs, pads.mjs, ds.mjs, soak.mjs (headless Chrome; tiny generated test ROMs)
 .github/workflows/        pages.yml (deploy web) · android.yml (build APK + release)
 ```
 

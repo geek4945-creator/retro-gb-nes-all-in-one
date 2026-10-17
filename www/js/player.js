@@ -2,6 +2,8 @@
 // guards the core against crashes and keeps resumable snapshots.
 import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore } from './cores.js';
+import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
+import { startPadNav } from './padnav.js';
 
 // Where EmulatorJS' loader, UI and cores come from: a PINNED release (see EJS_VERSION in cores.js), not "stable".
 // Override with window.RP_EJS_DATA for a self-hosted copy (README → Self-hosting EmulatorJS).
@@ -115,6 +117,87 @@ document.addEventListener('visibilitychange', () => {
 addEventListener('pagehide', () => snapshot({ force: true }));
 addEventListener('pointerdown', resumeAudio, { passive: true });
 
+/* ---------- controllers ---------- */
+installShim(loadPad, () => rom && rom.system);      // must be in place before EmulatorJS starts polling navigator.getGamepads()
+const ptoast = (msg) => { const t = $('#ptoast'); t.textContent = msg; t.hidden = false; clearTimeout(ptoast.t); ptoast.t = setTimeout(() => (t.hidden = true), 2600); };
+let padSig = '', touchOverride = false;
+
+function applyControls() {          // our Controllers settings win over EmulatorJS' per-game saved controls
+  const e = emu(); if (!e || !e.controls) return;
+  e.controls = JSON.parse(JSON.stringify(buildControls(loadPad())));
+  try { e.setupKeys(); e.checkGamepadInputs(); } catch (x) { console.warn('applyControls', x); }
+}
+function syncPads({ announce = true } = {}) {
+  const cfg = loadPad(), pads = rawPads(), e = emu();
+  const sig = pads.map((g) => g.id + '#' + g.index).join('|') + JSON.stringify(cfg.assign);
+  if (sig === padSig) return; const had = padSig.split('|').filter(Boolean).length; padSig = sig;
+  const slots = assignPlayers(pads, cfg);
+  if (e && Array.isArray(e.gamepadSelection)) {
+    e.gamepadSelection = slots.map((g) => (g ? `${g.id}_${g.index}` : ''));
+    try { e.updateGamepadLabels && e.updateGamepadLabels(); } catch {}
+  }
+  window.__rpPlayers = slots.map((g) => (g ? g.id : null));
+  if (announce) {
+    if (pads.length > had) ptoast(`🎮 ${padName(pads[pads.length - 1].id)} connected${slots.indexOf(pads[pads.length - 1]) >= 0 ? ` — Player ${slots.indexOf(pads[pads.length - 1]) + 1}` : ''}`);
+    else if (pads.length < had) ptoast('🎮 Controller disconnected');
+  }
+  updateTouchPad();
+}
+function updateTouchPad() {         // hide the on-screen pad while a controller is connected (touch brings it back)
+  const e = emu(); if (!e || typeof e.toggleVirtualGamepad !== 'function') return;
+  const hide = loadPad().hideTouch && rawPads().length > 0 && !touchOverride;
+  e.toggleVirtualGamepad(!hide);
+  window.__rpTouchHidden = hide;
+}
+addEventListener('pointerdown', (ev) => { if (ev.pointerType === 'touch' && rawPads().length && !touchOverride) { touchOverride = true; updateTouchPad(); } }, { passive: true });
+addEventListener('gamepadconnected', () => syncPads());
+addEventListener('gamepaddisconnected', () => setTimeout(syncPads, 0));
+setInterval(() => syncPads(), 700);
+
+/* ---------- in-game menu (touch ☰ button or Select+Start on a controller) ---------- */
+const menuEl = $('#pmenu'); let menuOpen = false;
+const slot = () => String((emu() && emu().getSettingValue && emu().getSettingValue('save-state-slot')) || '1');
+function say(msg) { try { emu().displayMessage(msg, 2000); } catch { ptoast(msg); } }
+function quickSave() { try { const ok = emu().gameManager.quickSave(slot()); say(ok ? `State saved (slot ${slot()})` : 'Save failed'); return ok; } catch (e) { say('Save failed'); return false; } }
+function quickLoad() { try { emu().gameManager.quickLoad(slot()); say(`State loaded (slot ${slot()})`); } catch (e) { say('Load failed'); } }
+function setMenu(open) {
+  if (!started || crashed) return; menuOpen = open; menuEl.hidden = !open;
+  try { open ? emu().pause(true) : emu().play(true); } catch {}
+  if (open) { const first = menuEl.querySelector('button'); nav.setFocus(first); }
+  window.__rpMenuOpen = open;
+}
+$('#menu-btn').addEventListener('click', () => setMenu(!menuOpen));
+$('#pm-resume').onclick = () => setMenu(false);
+$('#pm-save').onclick = () => { quickSave(); setMenu(false); };
+$('#pm-load').onclick = () => { quickLoad(); setMenu(false); };
+$('#pm-restart').onclick = () => { try { emu().gameManager.restart(); } catch {} setMenu(false); };
+$('#pm-exit').onclick = () => { setMenu(false); $('#back').click(); };
+const nav = startPadNav({
+  getFocusables: () => [...document.querySelectorAll(!$('#crash').hidden ? '#crash button:not([hidden])' : '#pmenu button')],
+  enabled: () => menuOpen || !$('#crash').hidden,
+  onBack: () => { if (menuOpen) setMenu(false); },
+});
+
+// hotkeys: Select+Start (hold 0.5 s) or Guide = menu; Select+R1 = quick save; Select+L1 = quick load
+let hk = { combo: {}, prev: {} };
+function hotkeys() {
+  requestAnimationFrame(hotkeys);
+  const cfg = loadPad(); if (!cfg.hotkeys || !started || crashed) return;
+  const now = performance.now();
+  for (const g of rawPads()) {
+    const d = (i) => !!(g.buttons[i] && g.buttons[i].pressed), was = hk.prev[g.index] || {};
+    const sel = d(8), edge = (i) => d(i) && !was[i];
+    if (d(16) && !was[16]) setMenu(!menuOpen);
+    const cs = (hk.combo[g.index] = hk.combo[g.index] || { at: 0, fired: false });   // per pad, so a 2nd controller can't reset it
+    if (sel && d(9)) { if (!cs.at) cs.at = now; if (!cs.fired && now - cs.at > 500) { cs.fired = true; setMenu(!menuOpen); } } else { cs.at = 0; cs.fired = false; }
+    if (sel && edge(5) && !menuOpen) quickSave();
+    if (sel && edge(4) && !menuOpen) quickLoad();
+    hk.prev[g.index] = { 16: d(16), 5: d(5), 4: d(4) };
+    if (g.buttons.some((b) => b.pressed) && touchOverride && !menuOpen) { touchOverride = false; updateTouchPad(); }   // controller used again -> hide touch pad
+  }
+}
+requestAnimationFrame(hotkeys);
+
 /* ---------- boot ---------- */
 (async () => {
   if (!id) return fail('No game selected.');
@@ -142,7 +225,8 @@ addEventListener('pointerdown', resumeAudio, { passive: true });
     'virtual-gamepad': 'enabled',
   };
   window.EJS_ready = () => { status.hidden = true; };
-  window.EJS_onGameStart = () => { started = true; startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; };
+  window.EJS_defaultControls = buildControls(loadPad());
+  window.EJS_onGameStart = () => { started = true; startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
   if (params.get('resume') === '1') {
     const st = await db.getState(rom.id);
