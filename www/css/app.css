@@ -81,3 +81,20 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .bios-badge.ok { background: rgba(60,200,120,.2); color: #6fe3a1; } .bios-badge.need { background: rgba(255,170,0,.22); color: #ffb84d; }
 .bios-file { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
 .mini { border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); padding: 4px 10px; }
+
+/* BIOS dialog: system dropdown + per-file table + open-file downloads */
+.bios-select { width: 100%; margin: 10px 0 4px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-size: 15px; }
+.bios-panel { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; background: var(--panel); }
+.bios-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.bios-row { padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.bios-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .bios-top .mini { margin-left: auto; }
+.lvl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--muted); }
+.lvl.required { background: rgba(255,93,115,.2); color: #ff8fa0; } .lvl.recommended { background: rgba(255,170,0,.2); color: #ffb84d; }
+.bios-st.good { color: #6fe3a1; } .bios-st.miss { color: var(--muted); }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+.bios-builtin { color: #6fe3a1; margin: 4px 0; }
+.bios-open, .bios-closed { margin-top: 10px; padding: 10px; border-radius: 10px; background: var(--panel2); }
+.bios-open h4 { margin: 0 0 6px; } .bios-closed p { margin: 4px 0 0; }
+.bios-open a, .bios-panel a { color: #a99bff; }
+.bios-prog { width: 100%; height: 10px; margin-top: 8px; accent-color: var(--accent); }
+.row:disabled { opacity: .55; }

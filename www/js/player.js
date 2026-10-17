@@ -224,6 +224,8 @@ requestAnimationFrame(hotkeys);
   try {
     const bios = await buildBios(rom.system);                       // user-supplied BIOS from IndexedDB, never bundled
     if (bios) { window.EJS_biosUrl = URL.createObjectURL(bios.file); window.__rpBios = bios.names; }
+    // Amiga: with no real Kickstart stored, use PUAE's built-in open-source AROS replacement (otherwise the core stops with "Kickstart ROM not found").
+    window.__rpAros = rom.system === 'amiga' && !(bios && bios.names.some((n) => /^kick/i.test(n)));
   } catch (e) { console.warn('BIOS load failed', e); }
   if (sys.heavy && !params.get('switched')) { const b = $('#banner'); b.textContent = `⚠ ${sys.label} is demanding — it may run slowly on phones.`; b.hidden = false; setTimeout(() => (b.hidden = true), 6000); }
   window.EJS_player = '#game';
@@ -242,6 +244,7 @@ requestAnimationFrame(hotkeys);
     'save-save-interval': '0',                 // we flush battery saves ourselves (guarded, see flushSaves)
     'virtual-gamepad': 'enabled',
   };
+  if (window.__rpAros) window.EJS_defaultOptions.puae_kickstart = 'aros';
   window.EJS_ready = () => { status.hidden = true; };
   window.EJS_defaultControls = buildControls(loadPad());
   window.EJS_onGameStart = () => { started = true; startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };

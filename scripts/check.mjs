@@ -29,4 +29,29 @@ try {
   if (!readme.includes(table())) fail('README systems table is out of date: run  node scripts/systems-table.mjs --write');
   else console.log('ok  README systems table in sync');
 } catch (e) { fail('systems table check: ' + e.message); }
+// Open-licensed BIOS mirror: every entry must match its file exactly, carry a licence + https source, and nothing else may be stored there.
+try {
+  const { createHash } = await import('node:crypto');
+  const { OPEN_FILES, DOCS } = await import('../www/js/biosdata.js');
+  const { SYSTEMS } = await import('../www/js/cores.js');
+  const dir = join(root, 'bios-open');
+  const listed = new Set(OPEN_FILES.map((o) => o.url.replace('bios-open/', '')));
+  for (const o of OPEN_FILES) {
+    const p = join(root, o.url);
+    if (!existsSync(p)) { fail('open BIOS missing ' + o.url); continue; }
+    const b = readFileSync(p);
+    if (b.length !== o.size) fail(`${o.url}: size ${b.length} != ${o.size}`);
+    if (createHash('md5').update(b).digest('hex') !== o.md5) fail(`${o.url}: md5 differs from biosdata.js`);
+    if (!existsSync(join(root, o.licenseUrl))) fail(`${o.url}: licence file missing`);
+    if (!/^https:\/\//.test(o.source) || /archive\.org/i.test(o.source)) fail(`${o.url}: source must be an https upstream project`);
+    if (!/^(MIT|Expat|BSD|GPL|LGPL|Apache|CC0|Zlib|MPL|APL|Public)/i.test(o.license)) fail(`${o.url}: licence "${o.license}" not recognised as open`);
+    if (!SYSTEMS[o.system] || !SYSTEMS[o.system].bios || !SYSTEMS[o.system].bios.files.some((x) => x.name === o.name)) fail(`${o.url}: not a file ${o.system} looks for`);
+  }
+  for (const f of readdirSync(dir)) if (!listed.has(f) && !['licenses', 'README.md'].includes(f)) fail('unlisted file in bios-open/: ' + f + ' (only open-licensed files declared in biosdata.js may be stored)');
+  for (const [k, sy] of Object.entries(SYSTEMS)) if (sy.bios) {
+    if (!DOCS[k]) fail('no libretro docs slug for BIOS system ' + k);
+    for (const x of sy.bios.files) if (x.md5 && !/^[0-9a-f]{32}$/.test(x.md5)) fail(`bad md5 for ${k}/${x.name}`);
+  }
+  console.log('ok  open BIOS mirror (' + OPEN_FILES.length + ' files, checksums + licences)');
+} catch (e) { fail('open BIOS check: ' + e.message); }
 console.log(bad ? `${bad} problem(s)` : 'all checks passed'); process.exit(bad ? 1 : 0);

@@ -13,7 +13,7 @@ An all-in-one retro emulator that runs **in the browser** (installable on iPhone
 | **Nintendo 64** (Nintendo) | `.n64` `.v64` `.z64` `.ndd` `.bin` *(asks which system)* | `mupen64plus_next` (`parallel_n64`) | none | ⚠ heavy · analog · 4P · Z = L2/ZL, C-buttons = right stick, analog stick = left stick. |
 | **Nintendo DS** (Nintendo) | `.nds` | `desmume2015` (`melonds`) | bios7.bin optional, bios9.bin optional, firmware.bin optional | 1P |
 | **Virtual Boy** (Nintendo) | `.vb` `.vboy` `.bin` *(asks which system)* | `beetle_vb` | none | 1P |
-| **PlayStation** (Sony) | `.mdf` `.toc` `.cbn` `.bin` `.iso` `.cue` `.chd` `.ccd` `.m3u` … *(asks which system)* | `pcsx_rearmed` (`mednafen_psx_hw`) | scph5501.bin recommended, scph5500.bin recommended, scph5502.bin recommended, scph1001.bin optional | ⚠ heavy · analog · 2P · Multi-disc games: add a .m3u playlist or one .cue per disc. L2/R2 = triggers, analog sticks supported. |
+| **PlayStation** (Sony) | `.mdf` `.toc` `.cbn` `.bin` `.iso` `.cue` `.chd` `.ccd` `.m3u` … *(asks which system)* | `pcsx_rearmed` (`mednafen_psx_hw`) | scph5501.bin recommended, scph5500.bin recommended, scph5502.bin recommended, scph1001.bin optional, psxonpsp660.bin optional | ⚠ heavy · analog · 2P · Multi-disc games: add a .m3u playlist or one .cue per disc. L2/R2 = triggers, analog sticks supported. |
 | **PlayStation Portable** (Sony) | `.cso` `.prx` `.elf` `.iso` `.chd` `.pbp` *(asks which system)* | `ppsspp` | none | ⚠ heavy · analog · 1P · Needs threads + WebGL2 (the app turns on cross-origin isolation automatically). |
 | **Master System** (Sega) | `.sms` `.bin` `.rom` *(asks which system)* | `smsplus` (`genesis_plus_gx`, `picodrive`) | none | 2P |
 | **Game Gear** (Sega) | `.gg` | `genesis_plus_gx` (`smsplus`) | none | 1P |
@@ -23,7 +23,7 @@ An all-in-one retro emulator that runs **in the browser** (installable on iPhone
 | **Sega 32X** (Sega) | `.32x` | `picodrive` | none | 2P |
 | **Sega Saturn** (Sega) | `.mds` `.bin` `.iso` `.cue` `.chd` `.ccd` `.m3u` … *(asks which system)* | `yabause` | saturn_bios.bin recommended | ⚠ heavy · 2P · Digital pad: A/B/C = ✕/○/□-style face buttons, X/Y/Z = Y/X + R. Saturn emulation is very heavy. |
 | **Atari 2600** (Atari) | `.a26` `.bin` `.zip` *(asks which system)* | `stella2014` | none | 2P · Select = Game Select, Start = Reset. |
-| **Atari 5200** (Atari) | `.a52` `.bin` `.rom` *(asks which system)* | `a5200` | 5200.rom **required** | 2P |
+| **Atari 5200** (Atari) | `.a52` `.bin` `.rom` *(asks which system)* | `a5200` | 5200.rom optional | 2P |
 | **Atari 7800** (Atari) | `.a78` `.bin` `.rom` *(asks which system)* | `prosystem` | 7800 BIOS (U).rom optional, 7800 BIOS (E).rom optional | 2P |
 | **Atari Lynx** (Atari) | `.lnx` | `handy` | lynxboot.img recommended | 1P |
 | **Atari Jaguar** (Atari) | `.j64` `.jag` `.abs` `.cof` `.bin` `.rom` *(asks which system)* | `virtualjaguar` | none | 2P |
@@ -31,12 +31,12 @@ An all-in-one retro emulator that runs **in the browser** (installable on iPhone
 | **Neo Geo Pocket Color** (SNK) | `.ngc` | `mednafen_ngp` | none | 1P |
 | **Neo Geo (AES/MVS)** (SNK) | `.zip` `.7z` *(asks which system)* | `fbneo` | neogeo.zip **required** | 2P · Select = Coin, Start = Start. Games are the usual FBNeo/MAME .zip sets. |
 | **PC Engine / TurboGrafx-16** (NEC) | `.pce` `.bin` *(asks which system)* | `mednafen_pce` | none | 2P |
-| **PC Engine CD / TurboGrafx-CD** (NEC) | `.bin` `.iso` `.cue` `.chd` `.ccd` `.m3u` … *(asks which system)* | `mednafen_pce` | syscard3.pce **required** | 2P |
+| **PC Engine CD / TurboGrafx-CD** (NEC) | `.bin` `.iso` `.cue` `.chd` `.ccd` `.m3u` … *(asks which system)* | `mednafen_pce` | syscard3.pce **required**, syscard2.pce optional, syscard1.pce optional, gexpress.pce optional | 2P |
 | **PC-FX** (NEC) | `.iso` `.cue` `.chd` `.ccd` *(asks which system)* | `mednafen_pcfx` | pcfx.rom **required** | 2P |
 | **WonderSwan** (Bandai) | `.ws` `.pc2` | `mednafen_wswan` | none | 1P |
 | **WonderSwan Color** (Bandai) | `.wsc` | `mednafen_wswan` | none | 1P |
 | **3DO** (Other) | `.bin` `.iso` `.cue` `.chd` *(asks which system)* | `opera` | panafz10.bin **required**, panafz1.bin optional, goldstar.bin optional, sanyotry.bin optional | ⚠ heavy · 2P |
-| **ColecoVision** (Other) | `.col` `.cv` `.bin` `.rom` *(asks which system)* | `gearcoleco` | colecovision.rom **required** | 2P |
+| **ColecoVision** (Other) | `.col` `.cv` `.bin` `.rom` *(asks which system)* | `gearcoleco` | colecovision.rom **required**, eos.rom optional, writer.rom optional | 2P |
 | **Philips CD-i** (Other) | `.iso` `.cue` `.chd` *(asks which system)* | `same_cdi` | cdimono1.zip **required** | ⚠ heavy · 1P · experimental |
 | **Commodore 64** (Computers) | `.d64` `.d71` `.d81` `.t64` `.prg` `.p00` `.crt` … `.m3u` `.gz` `.tap` *(asks which system)* | `vice_x64sc` (`vice_x64`) | none | 2P · Joystick only on mobile; a physical keyboard works on desktop. Auto-starts disks/tapes. |
 | **Commodore 128** (Computers) | — | `vice_x128` | none | 2P · experimental |
@@ -57,7 +57,8 @@ Features: **46 systems** (table above, verified against the pinned EmulatorJS 4.
 
 ## ⚖️ Legal
 
-* **Bring your own ROMs.** No games or BIOS files are included or downloaded. Only use dumps of cartridges you own, or homebrew you have the right to play. The ROMs you add never leave your device (they're stored in the browser's local database).
+* **Bring your own ROMs.** No games are included or downloaded. Only use dumps of cartridges you own, or homebrew you have the right to play. The ROMs you add never leave your device (they're stored in the browser's local database).
+* **No commercial BIOS, ever.** Original BIOS/firmware files (Sony, Sega, Nintendo, Atari, SNK, NEC, Panasonic/3DO, Coleco, Commodore…) are copyrighted: they are **not** in this repository, **not** downloaded by the app, and the app never links to dump sites or archive copies. You supply them from your own console. The only BIOS-type files that can be downloaded are the **three open-licensed replacements** listed under [BIOS files](#-bios-files) (MIT / Expat), mirrored in `www/bios-open/` together with their licence texts; `npm run check` fails if anything else is placed there or a checksum / licence entry is missing.
 * **Licensing:** this project is released under **GPL-3.0** (see `LICENSE`). It loads [EmulatorJS](https://github.com/EmulatorJS/EmulatorJS) (GPL-3.0) and the RetroArch/libretro cores (Gambatte GPL-2.0, mGBA MPL-2.0, FCEUmm/Nestopia GPL-2.0, DeSmuME GPL-2.0, melonDS GPL-3.0, Mupen64Plus-Next GPL-2.0, PCSX ReARMed GPL-2.0, PPSSPP GPL-2.0, Genesis Plus GX / SMS Plus **non-commercial** licences, Snes9x **non-commercial**, Stella GPL-2.0, MAME 2003 / FBNeo **non-commercial**, VICE GPL-2.0, DOSBox Pure GPL-2.0 …) from the EmulatorJS CDN at runtime. Several cores forbid commercial use, so do not sell this app or publish it commercially; check each core's licence if you redistribute. Apple's App Store is generally incompatible with GPL — which is why the iPhone version is a Home Screen web app.
 * Nintendo, Game Boy, NES, SNES etc. are trademarks of Nintendo; this project is not affiliated with or endorsed by them.
 
@@ -101,7 +102,25 @@ The first launch of each system downloads its core (~1–4 MB) from the Emulator
 
 ## 🔑 BIOS files
 
-Some consoles cannot run (or run poorly) without the original BIOS/firmware. These are copyrighted and are **never bundled or downloaded** by Retro Pocket. Open **Settings → 🔑 BIOS files…** (or ⋯ → *BIOS files…* on a game that needs one), choose the system, and upload the files from your own console (`.zip` packs of BIOS files are unpacked; names that differ only by case, like `SCPH5501.BIN`, are corrected). They are stored in IndexedDB on your device and, at launch, handed to EmulatorJS (`EJS_biosUrl`), which places them where the core looks for them. Files that must stay zipped (`neogeo.zip`, CD-i `cdimono1.zip`) are passed through untouched. Systems that *require* a BIOS show a ⚠ note in the game's menu until you add one; see the BIOS column above. BIOS delivery is covered by `tests/library.mjs` (mGBA sees `/gba_bios.bin`; `neogeo.zip` arrives byte-identical).
+Open **Settings → 🔑 BIOS files…** (or ⋯ → *BIOS files…* on a game that needs one). Pick a system in the **dropdown** (all 18 BIOS systems, grouped, each with a status). The panel lists every file the core looks for with its level (**required** / **recommended** / **optional**), whether it is **installed** or **missing**, and the md5 libretro publishes for the usual dump (a stored file whose md5 differs is flagged, it may still work). Then:
+
+* **Free, open-source files** get a **Download open files** button (and *Download all open files* for every system): files are fetched from the app's own `bios-open/` folder (same origin, so no CORS problems, cached for offline use), shown with a progress bar, **size + md5 verified** before they are stored, and never stored if the check fails.
+* **Copyrighted files** (everything else) show a *“Must come from your own console”* note with the exact file name and md5 expected, the **Upload** button (`.zip` packs are unpacked, names that differ only by case such as `SCPH5501.BIN` are corrected) and a link to that system's [libretro documentation](https://docs.libretro.com/library/bios/) page.
+
+Files are stored in IndexedDB on your device and, at launch, handed to EmulatorJS (`EJS_biosUrl`), which places them where the core looks for them. Files that must stay zipped (`neogeo.zip`, CD-i `cdimono1.zip`) are passed through untouched. Systems that *require* a BIOS show a ⚠ note in the game's menu until you add one.
+
+| System | Offered by the dropdown | Source / licence |
+|---|---|---|
+| Game Boy Advance | **Download** `gba_bios.bin` (16 KB, optional) | [Cult of GBA open-source BIOS](https://github.com/Cult-of-GBA/BIOS) – **MIT**. mGBA also has its own built-in replacement, so no file is needed. |
+| Game Boy | **Download** `gb_bios.bin` (256 B, optional boot ROM) | [SameBoy](https://github.com/LIJI32/SameBoy) v1.0.4 `dmg_boot.bin` – **Expat (MIT)**. Used by Gambatte; mGBA ignores non-original boot ROMs. |
+| Game Boy Color | **Download** `gbc_bios.bin` (2.3 KB, optional boot ROM) | SameBoy `cgb_boot.bin` – **Expat (MIT)**. |
+| Nintendo DS | nothing to download | melonDS FreeBIOS / DeSmuME 2015 run without files (built-in open replacements). Real `bios7.bin`, `bios9.bin`, `firmware.bin` are optional and come from your console. |
+| Atari 5200 | nothing to download | The core contains the open-source AltirraOS; `5200.rom` is optional. |
+| Commodore Amiga | nothing to download | PUAE contains the open-source AROS Kickstart; Retro Pocket selects it automatically while no real Kickstart is stored (`puae_kickstart=aros`). Real `kick*.A500/A600/A1200` files are recommended for many games. |
+| PlayStation, Saturn | upload only | HLE BIOS is built in (limited); real BIOS from your console is recommended (`scph5501.bin` …, `saturn_bios.bin`). |
+| **Must be dumped from your own console** | upload only, exact name + md5 shown | Sega CD (`bios_CD_U/E/J.bin`), PC Engine CD (`syscard3.pce`), PC-FX (`pcfx.rom`), 3DO (`panafz10.bin`), ColecoVision (`colecovision.rom`), CD-i (`cdimono1.zip`), Neo Geo / Arcade (`neogeo.zip`), Atari 7800 / Lynx (`7800 BIOS (U).rom`, `lynxboot.img`), NES Famicom Disk System (`disksys.rom`) |
+
+Why only these three? libretro's own “Download Core System Files” pack contains only open per-core assets (no commercial BIOS) and its host sends no CORS headers, so a web page cannot fetch it. Other open BIOS replacements either live inside the cores already (AROS, AltirraOS, melonDS FreeBIOS) or are not accepted by the cores. Sources and licence texts are in [`www/bios-open/`](www/bios-open/README.md); md5/size/licence are verified by `npm run check`. BIOS delivery and the dialog are covered by `tests/bios.mjs` (mocked fetch: corrupt / truncated / 404 / slow / good, IndexedDB result, mGBA sees the downloaded `/gba_bios.bin` byte-for-byte) and `tests/library.mjs` (`neogeo.zip` arrives byte-identical).
 
 ## ⚠ Performance warnings
 
@@ -153,6 +172,8 @@ node tests/pads.mjs       # controller tests with a mocked Gamepad API
 node tests/detect.mjs     # system detection / zip / cue unit tests (no browser)
 node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
+node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
+node tests/hash.mjs       # md5 implementation (no browser)
 node tests/threads.mjs    # PPSSPP/DOSBox cross-origin isolation + regression checks
 KEYS=psx,n64 ALT=1 node tests/systems.mjs   # boot matrix: a stub image per system / core (all systems when KEYS is unset)
 node tests/soak.mjs tests/fixtures/nes-test.nes nestopia 5   # N-minute soak
@@ -178,7 +199,8 @@ www/                      the whole app (static; served by Pages and bundled int
   index.html, css/app.css library UI            js/app.js     library, adding ROMs, settings
   player.html, css/player.css  game screen      js/player.js  launches EmulatorJS, saves/resumes
   js/cores.js             THE systems table (cores, extensions, BIOS, art, players)   js/db.js  IndexedDB (ROMs, states, art, BIOS)
-  js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js  BIOS storage + Settings → BIOS files
+  js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js, js/biosdata.js, js/hash.js  BIOS storage, dialog, open-file table, md5
+  bios-open/              the only BIOS-type files in the repo: open-licensed, with licences/
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
   js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
