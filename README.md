@@ -249,6 +249,20 @@ In game, open **☰ → 🧪 Cheats…**:
 - **Collections:** go to **⋯ → 📁 Collections…** to create collections (for example "Couch co-op" or "RPGs") and tick the games that belong in them. Each collection gets its own filter chip. You can rename or delete collections from the same screen.
 - All of this is stored on the device and included in **Backup**. Removing a game also removes its entries.
 
+## 🎮 Touch layout editor & skins
+
+In game, open **☰ → 🎮 Touch layout…**. The game pauses and the on-screen controls become editable:
+- **Drag** any button, d-pad or stick to move it.
+- **Tap** a control to select it, then use the **Size** slider (50–200%) to resize it.
+- **All controls** scales the whole pad. **Opacity** goes from 10–100%.
+- **Presets:** Default, Large, Compact, Raised (higher, clear of the home bar) and Left-handed (d-pad and buttons swap sides).
+- **Skins:** Classic, Dark, Clear, Retro colors (SNES-coloured ABXY, Famicom/Game Boy maroon) and Neon.
+- Use **⇵ Panel** to move the editor panel out of the way. **Reset** goes back to the default layout.
+
+Layouts are saved **per system**, re-applied every time a game starts, and included in Backup. Sizes and positions are stored relative to the screen, so they also work after rotating the device.
+
+Analog sticks can be moved but not resized.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

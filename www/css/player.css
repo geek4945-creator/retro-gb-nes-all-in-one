@@ -69,3 +69,29 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 .cheat-row small, .cheat-db small { color: #8c91a8; font: 12px ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
 .cheat-file, .cheat-db { display: flex; width: 100%; margin: 4px 0; text-align: left; }
 .cheat-db.added { opacity: .5; }
+
+/* touch layout editor + skins */
+#tl-editor { position: fixed; inset: 0; z-index: 60; }
+#tl-hit { position: absolute; inset: 0; touch-action: none; background: rgba(0,0,0,.12); }
+#tl-bar { position: absolute; z-index: 2; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(94vw, 440px); box-sizing: border-box; background: rgba(18,20,30,.92); color: #eceef7; border: 1px solid #2a2e40; border-radius: 14px; padding: 10px 12px; font: 14px system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; gap: 6px; }
+#tl-bar #tl-sel { color: #8c91a8; font-size: 12px; }
+#tl-bar label { display: grid; grid-template-columns: 92px 1fr 44px; align-items: center; gap: 8px; font-size: 13px; }
+#tl-bar output { text-align: right; color: #ffd54a; font-variant-numeric: tabular-nums; }
+#tl-bar .tl-row { display: flex; gap: 8px; } #tl-bar .tl-row > * { flex: 1; }
+#tl-bar select, #tl-bar button { padding: 9px; border-radius: 10px; border: 1px solid #2a2e40; background: #1f2230; color: #fff; font-size: 14px; }
+#tl-bar button.primary { background: #7c5cff; border-color: #7c5cff; font-weight: 700; }
+.tl-selected { outline: 2px dashed #ffd54a !important; outline-offset: 3px; }
+[data-rp-skin="dark"] .ejs_virtualGamepad_button { background-color: rgba(0,0,0,.5); border-color: #555; color: #ddd; }
+[data-rp-skin="dark"] .ejs_dpad_bar { background: #2a2a2a; }
+[data-rp-skin="clear"] .ejs_virtualGamepad_button { background-color: transparent; border: 2px solid rgba(255,255,255,.55); color: rgba(255,255,255,.8); }
+[data-rp-skin="clear"] .ejs_dpad_bar { background: rgba(255,255,255,.18); }
+[data-rp-skin="retro"] .ejs_virtualGamepad_button { color: #fff; border-color: rgba(0,0,0,.4); }
+[data-rp-skin="retro"] .ejs_virtualGamepad_button.b_a { background-color: #c8102e; } [data-rp-skin="retro"] .ejs_virtualGamepad_button.b_b { background-color: #e6b800; }
+[data-rp-skin="retro"] .ejs_virtualGamepad_button.b_x { background-color: #1f4fbf; } [data-rp-skin="retro"] .ejs_virtualGamepad_button.b_y { background-color: #1d8a3a; }
+[data-rp-skin="retro"] .cs_nes.b_a, [data-rp-skin="retro"] .cs_nes.b_b, [data-rp-skin="retro"] .cs_gb.b_a, [data-rp-skin="retro"] .cs_gb.b_b { background-color: #9b1b4a !important; }
+[data-rp-skin="retro"] .ejs_dpad_bar { background: #222; }
+[data-rp-skin="neon"] .ejs_virtualGamepad_button { background-color: rgba(0,20,30,.35); border: 2px solid #19e6ff; color: #19e6ff; box-shadow: 0 0 10px rgba(25,230,255,.6), inset 0 0 8px rgba(25,230,255,.3); }
+[data-rp-skin="neon"] .ejs_dpad_bar { background: rgba(25,230,255,.35); box-shadow: 0 0 10px rgba(25,230,255,.6); }
+.tl-editing .ejs_virtualGamepad_button { transition: none !important; }
+#tl-bar.tl-bottom { top: auto; bottom: max(8px, env(safe-area-inset-bottom)); }
+@media (max-height: 480px) { #tl-bar { gap: 3px; padding: 8px 10px; } #tl-bar select, #tl-bar button { padding: 6px; } }
