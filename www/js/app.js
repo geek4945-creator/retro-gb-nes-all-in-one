@@ -12,6 +12,7 @@ import { initUpdates, checkForUpdates, currentBuild, isApk } from './updates.js'
 import { openBackup } from './backup.js';
 import { initFolders, drawFolders } from './foldersui.js';
 import * as cloud from './cloud.js';
+import * as ra from './retroach.js';
 import { loadNet, saveNet, DEFAULT_STUN, parseServer } from './netcfg.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
@@ -328,6 +329,7 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row', id: 'btn-folders-settings', textContent: '📁 ROM folders…', onclick: () => { d.close(); drawFolders(); } }),
     el('button', { className: 'row', id: 'btn-net', textContent: '🌐 Online play (netplay)…', onclick: () => openNetSettings(d) }),
     el('button', { className: 'row', id: 'btn-cloud', textContent: '☁️ Cloud save sync (Google Drive)…', onclick: () => openCloud(d) }),
+    el('button', { className: 'row', id: 'btn-ra', textContent: '🏆 RetroAchievements…', onclick: () => openRA(d) }),
     el('button', { className: 'row', id: 'btn-backup', textContent: '💾 Backup & restore…', onclick: () => { d.close(); openBackup($('#backup'), toast); } }),
     el('button', { className: 'row', id: 'btn-update', textContent: `🔄 Check for updates (version ${currentBuild().version})`, onclick: async (e) => { const b = e.currentTarget; b.disabled = true; const m = await checkForUpdates({ manual: true }); b.disabled = false; toast(m || 'Checked.'); } }),
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
@@ -396,6 +398,28 @@ function openCloud(d) {
 async function autoCloudSync() {          // only with a token from this app session (no popups); runs after returning from a game
   const c = cloud.loadCloud(); if (c.auto === false || !c.email || !cloud.hasSession()) return;
   try { const r = await cloud.syncNow(); if (r.down) refresh(); if (r.up || r.down) toast(`☁️ Saves synced (↑${r.up} ↓${r.down})`, { soft: true }); } catch (e) { console.warn('cloud sync', e); }
+}
+
+function openRA(d) {
+  const c = ra.loadRA();
+  const status = el('p', { className: 'muted small', id: 'ra-status', textContent: c.user && c.key ? `Logged in as ${c.user}.` : 'Not logged in.' });
+  const user = el('input', { id: 'ra-user', value: c.user, placeholder: 'RetroAchievements username', autocomplete: 'username', spellcheck: false });
+  const key = el('input', { id: 'ra-key', type: 'password', value: c.key, placeholder: 'Web API key (retroachievements.org → Settings)', autocomplete: 'off' });
+  d.replaceChildren(el('h3', { textContent: 'RetroAchievements' }),
+    el('p', { className: 'muted small', textContent: 'Log in with your username and your personal Web API key (retroachievements.org → Settings → Keys); your password is never needed. In-game ☰ → 🏆 Achievements then shows the set for the running game and what you have unlocked.' }),
+    el('label', { className: 'row field' }, el('span', { textContent: 'Username' }), user),
+    el('label', { className: 'row field' }, el('span', { textContent: 'Web API key' }), key),
+    el('button', { className: 'row primary', id: 'ra-login', textContent: 'Log in', onclick: async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try { const p = await ra.login(user.value.trim(), key.value.trim()); status.textContent = `Logged in as ${p.User}${p.TotalPoints != null ? ` · ${p.TotalPoints} points (${p.TotalTruePoints || 0} hardcore)` : ''}.`; toast('🏆 RetroAchievements: logged in'); }
+      catch (x) { status.textContent = x.message; toast(x.message); } finally { b.disabled = false; }
+    } }),
+    status,
+    el('label', { className: 'row select' }, 'Hardcore mode (no save-state loading, cheats, rewind or slow motion)',
+      el('input', { type: 'checkbox', id: 'ra-hardcore', checked: c.hardcore, onchange: (e) => { ra.saveRA({ ...ra.loadRA(), hardcore: e.target.checked }); toast(e.target.checked ? 'Hardcore on (applies when a game starts)' : 'Hardcore off'); } })),
+    el('p', { className: 'muted small', textContent: 'Honest limit: RetroAchievements only accepts unlocks from approved emulators (e.g. RetroArch), and its unlock API cannot be used from a browser. Retro Pocket shows your achievements and progress and applies hardcore rules, but playing here does not award new unlocks.' }),
+    el('button', { className: 'row', id: 'ra-logout', textContent: 'Log out', onclick: () => { ra.logout(); user.value = ''; key.value = ''; status.textContent = 'Not logged in.'; } }),
+    el('button', { className: 'row ghost', textContent: 'Back', onclick: () => $('#btn-settings').click() }));
 }
 
 function openCoreDefaults(d) {

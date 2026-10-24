@@ -203,6 +203,20 @@ Settings → **☁️ Cloud save sync** keeps your **in-game (battery) saves and
 - Background sync needs a sign-in from the current app session. After the app is fully closed, tap *Sync now* once (one tap, no password if you're signed in to Google).
 - Don't play the same game on two devices at once: the newest save wins.
 
+## 🏆 RetroAchievements
+
+Settings → **🏆 RetroAchievements**:
+- Log in with your username and your personal **Web API key** (retroachievements.org → Settings → Keys). Your password is never asked for or stored. The key stays on the device and is excluded from backups.
+- **In-game ☰ → 🏆 Achievements** lists the achievement set for the running game and what you've unlocked (softcore/hardcore), with badges. The game is matched by RetroAchievements' own ROM hash, so it has to be a supported dump.
+- Hash matching works for cartridge systems: NES, SNES, N64, GB/GBC/GBA, Virtual Boy, Genesis, 32X, SMS, GG, SG-1000, PC Engine, Atari 2600/7800/Lynx/Jaguar, NGP/NGPC, WonderSwan and ColecoVision.
+- **Hardcore mode** applies RetroAchievements' hardcore rules in Retro Pocket: loading save states, auto-resume, cheats, rewind and slow motion are all disabled. Saving and fast-forward still work.
+
+**Honest limit:** Retro Pocket can't award new unlocks, for two reasons:
+- RetroAchievements only accepts unlocks from approved emulators such as RetroArch.
+- Its unlock API blocks browser (CORS) requests, and the EmulatorJS cores don't expose game memory for the rcheevos runtime.
+
+Unlocks you earn in RetroArch on other devices show up here.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

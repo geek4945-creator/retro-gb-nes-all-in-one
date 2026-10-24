@@ -2,6 +2,7 @@
 // guards the core against crashes and keeps resumable snapshots.
 import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
+import { hardcoreOn, achievementsPanel } from './retroach.js';
 import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
 import { loadUi, saveUi, UI_POS } from './ingameui.js';
@@ -162,11 +163,12 @@ const menuEl = $('#pmenu'); let menuOpen = false;
 const slot = () => String((emu() && emu().getSettingValue && emu().getSettingValue('save-state-slot')) || '1');
 function say(msg) { try { emu().displayMessage(msg, 2000); } catch { ptoast(msg); } }
 function quickSave() { try { const ok = emu().gameManager.quickSave(slot()); say(ok ? `State saved (slot ${slot()})` : 'Save failed'); return ok; } catch (e) { say('Save failed'); return false; } }
-function quickLoad() { try { emu().gameManager.quickLoad(slot()); say(`State loaded (slot ${slot()})`); } catch (e) { say('Load failed'); } }
+const HARDCORE = hardcoreOn();      // RetroAchievements hardcore rules: no state loading, cheats or rewind / slow motion
+function quickLoad() { if (HARDCORE) { say('Hardcore mode: loading states is disabled'); return; } try { emu().gameManager.quickLoad(slot()); say(`State loaded (slot ${slot()})`); } catch (e) { say('Load failed'); } }
 function setMenu(open) {
   if (!started || crashed) return; if (!open && panelOpen()) closePanel(); menuOpen = open; menuEl.hidden = !open; wake();
   try { open ? emu().pause(true) : emu().play(true); } catch {}
-  if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
+  if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', HARDCORE ? '🏆 hardcore' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
   window.__rpMenuOpen = open;
   if (np && np.isHosting()) np.broadcast({ t: 'paused', paused: open });
 }
@@ -185,7 +187,7 @@ function refreshMenu() {
   $('#pm-sound').textContent = `${e.muted ? '🔇' : '🔊'} Sound: ${e.muted ? 'Off' : 'On'}`;
   $('#pm-ff').textContent = `⏩ Fast-forward: ${e.isFastForward ? 'On' : 'Off'}`;
   $('#pm-full').hidden = !fsSupported(); $('#pm-full').textContent = isFull() ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
-  $('#pm-cheats').hidden = !barOn(/^cheats?$/i); $('#pm-controls').hidden = !barOn(/control/i);
+  $('#pm-cheats').hidden = HARDCORE || !barOn(/^cheats?$/i); $('#pm-load').hidden = HARDCORE; $('#pm-controls').hidden = !barOn(/control/i);
   $('#pm-disc').hidden = !(e.diskParent && e.diskParent.style.display !== 'none' && e.gameManager && e.gameManager.getDiskCount() > 1);
   $('#pm-btnpos').textContent = `📍 Menu button: ${UI_POS[loadUi().pos]}`;
 }
@@ -232,6 +234,7 @@ async function netplay() {
   return np;
 }
 $('#pm-net').onclick = async () => { try { const n = await netplay(); openPanel('Online play', n.panel(), () => {}); } catch (e) { say('Online play unavailable: ' + e.message); } };
+$('#pm-ach').onclick = () => openPanel('Achievements', achievementsPanel(rom), () => {});
 $('#pm-disc').onclick = () => { const e = emu(); e.disksMenuOpen = true; openPanel('Disc / disk', e.disksMenu, () => e.closeDisksMenu && e.closeDisksMenu()); };
 
 /* ---------- the ☰ button: position + fade-out from Settings, always one tap away ---------- */
@@ -335,7 +338,8 @@ requestAnimationFrame(hotkeys);
   window.EJS_defaultControls = buildControls(loadPad());
   window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
-  if (params.get('resume') === '1') {
+  if (HARDCORE) Object.assign(window.EJS_defaultOptions, { rewindEnabled: 'disabled', 'slowMotion': 'disabled' });
+  if (params.get('resume') === '1' && !HARDCORE) {
     const st = await db.getState(rom.id);
     // never load a snapshot taken by a different core: that is a classic way to crash a libretro core
     if (st && st.data && st.core === rom.core) window.EJS_loadStateURL = URL.createObjectURL(new Blob([st.data]));
