@@ -30,6 +30,8 @@
     <div class="tools">
       <div class="searchrow"><input id="search" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games"><button id="btn-art" class="chip" type="button" hidden>🖼 Get art</button></div>
       <div id="chips" class="chips" role="tablist"></div>
+      <div class="folderbar"><button id="btn-scan" class="chip primary" type="button">🔄 Scan for new ROMs</button><button id="btn-folders" class="chip" type="button">📁 ROM folders</button></div>
+      <p id="scan-howto" class="muted small howto" hidden></p>
     </div>
 
     <section id="library" class="grid" aria-live="polite"></section>
@@ -44,6 +46,9 @@
 
   <label class="fab" for="file-input">＋ Add games</label>
   <input id="file-input" type="file" multiple hidden>
+  <input id="pick-downloads" type="file" multiple hidden>
+  <input id="pick-dir" type="file" webkitdirectory multiple hidden>
+  <div id="scan-progress" class="scan-progress" hidden><span></span><b><i></i></b></div>
 
   <dialog id="sheet" class="sheet"></dialog>
   <dialog id="settings" class="sheet"></dialog>
@@ -53,6 +58,7 @@
   <dialog id="dstouch" class="sheet"></dialog>
   <dialog id="uimenu" class="sheet"></dialog>
   <dialog id="backup" class="sheet"></dialog>
+  <dialog id="folders" class="sheet"></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <div id="drop" class="drop" hidden>Drop ROMs to add them</div>
 

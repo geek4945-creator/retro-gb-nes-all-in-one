@@ -2,14 +2,14 @@
   "name": "retro-gb-nes-all-in-one",
   "version": "1.0.0",
   "private": true,
-  "description": "Retro Pocket – all-in-one Game Boy / GBC / GBA / NES / SNES emulator (PWA + Android APK) built on EmulatorJS / RetroArch cores",
+  "description": "Retro Pocket \u2013 all-in-one Game Boy / GBC / GBA / NES / SNES emulator (PWA + Android APK) built on EmulatorJS / RetroArch cores",
   "license": "GPL-3.0-or-later",
   "scripts": {
     "start": "python3 -m http.server 8080 --directory www",
     "icons": "python3 scripts/make-icons.py",
     "check": "node scripts/check.mjs",
     "test": "node tests/e2e.mjs",
-    "test:all": "node tests/detect.mjs && node tests/hash.mjs && node tests/padsys.mjs && node tests/e2e.mjs && node tests/pads.mjs && node tests/crash.mjs && node tests/ds.mjs && node tests/ingame.mjs && node tests/update.mjs && node tests/dstouch.mjs && node tests/cover.mjs && node tests/library.mjs && node tests/bios.mjs && node tests/threads.mjs",
+    "test:all": "node tests/detect.mjs && node tests/hash.mjs && node tests/padsys.mjs && node tests/e2e.mjs && node tests/pads.mjs && node tests/crash.mjs && node tests/ds.mjs && node tests/ingame.mjs && node tests/update.mjs && node tests/dstouch.mjs && node tests/cover.mjs && node tests/library.mjs && node tests/bios.mjs && node tests/threads.mjs && node tests/folders.mjs",
     "test:ds-touch": "node tests/dstouch.mjs",
     "test:ingame": "node tests/ingame.mjs",
     "test:update": "node tests/update.mjs",
@@ -17,7 +17,8 @@
     "test:systems": "node tests/systems.mjs",
     "android:sync": "cap sync android",
     "android:open": "cap open android",
-    "android:debug": "cap sync android && cd android && ./gradlew assembleDebug"
+    "android:debug": "cap sync android && cd android && ./gradlew assembleDebug",
+    "test:folders": "node tests/folders.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",

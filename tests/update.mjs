@@ -42,7 +42,7 @@ try {
   await step('Check for updates after a deployment: banner "Update available — Reload", a worker is waiting (not auto-activated)', async () => {
     await page.click('#btn-update'); await page.waitForFunction(() => /Update available/.test(document.getElementById('toast').textContent), { timeout: 15000 });
     await page.waitForSelector('#update-banner:not([hidden])'); const txt = await page.$eval('#update-banner', (e) => e.textContent); assert(/1\.0\.101/.test(txt) || /ready/.test(txt), txt);
-    assert(await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 'waiting worker');
+    await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting, { timeout: 15000 }).catch(() => { throw new Error('waiting worker'); });
     await page.screenshot({ path: 'tests/out/update-banner.png' });
   });
   await step('Reload applies the update: the new worker (b101) takes over and the page reloads once on the new build', async () => {

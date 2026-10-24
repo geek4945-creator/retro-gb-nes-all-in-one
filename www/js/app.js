@@ -10,6 +10,7 @@ import { openDsTouch } from './dsui.js';
 import { openMenuBtnSettings } from './ingameui.js';
 import { initUpdates, checkForUpdates, currentBuild, isApk } from './updates.js';
 import { openBackup } from './backup.js';
+import { initFolders, drawFolders } from './foldersui.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
 
@@ -171,20 +172,23 @@ async function planFiles(files) {
   return items;
 }
 
-async function addFiles(files) {
-  let added = 0, dup = 0, skipped = 0; const newRoms = [], problems = [];
+/** Imports files into the library. Non-interactive (folder scans): ambiguous files use the content-sniffed guess or are
+ *  counted in `needChoice` instead of opening the "Which system?" picker. Returns counts; does not refresh the UI. */
+async function importFiles(files, { interactive = true } = {}) {
+  let added = 0, dup = 0, skipped = 0, needChoice = 0; const newRoms = [], problems = [];
   for (const item of await planFiles(files)) {
     try {
       let blob, name = item.name, probe;
       if (item.kind === 'bundle') {
         if (item.missing.length) { skipped++; problems.push(`“${item.name}” needs ${item.missing.slice(0, 2).join(', ')}${item.missing.length > 2 ? '…' : ''} — select the .cue and its .bin file(s) together`); continue; }
         const first = item.entries.find((e) => !/\.(cue|m3u)$/i.test(e.name)); if (!first) { skipped++; continue; }
-        toast(`Bundling ${item.name}…`);
+        if (interactive) toast(`Bundling ${item.name}…`);
         blob = await storedZip(item.entries); name = baseName(item.name) + '.zip';
         probe = { name: 'x.cue', size: first.data.size, slice: (a, b) => first.data.slice(a, b) };
       } else { blob = item.file; probe = item.file; }
       if (blob.size > MAX_ROM) { skipped++; problems.push(`“${name}” is too large (${(blob.size / 1048576).toFixed(0)} MB)`); continue; }
       let d = await detect(probe), system = d.system;
+      if (!system && !interactive) { system = d.likely && d.likely[0]; if (!system) { needChoice++; continue; } }
       if (!system) {
         system = await askSystem(item.name, d.candidates, d.likely);
         if (!system) { skipped++; continue; }
@@ -198,25 +202,38 @@ async function addFiles(files) {
       const data = await blob.arrayBuffer();
       const id = await db.sha256Hex(data);
       if (await db.getRom(id)) { dup++; continue; }
+      const orig = item.kind === 'single' ? item.file : null;
       await db.putRom({
         id, file: fname, title: titleFrom(item.name), system, core: defaultCore(system, settings),
         size: data.byteLength, added: Date.now(), lastPlayed: 0, data,
+        origName: orig ? orig.name : item.name, origSize: orig ? orig.size : data.byteLength,
       });
       added++; newRoms.push(id);
     } catch (e) {
       console.error(e); skipped++;
-      if (e && e.name === 'QuotaExceededError') { toast('Storage is full — free up space and try again.'); break; }
+      if (e && e.name === 'QuotaExceededError') { toast('Storage is full — free up space and try again.'); e.quota = true; problems.push('Storage is full'); break; }
       problems.push(`“${item.name}”: ${e.message || e}`);
     }
   }
-  await refresh();
+  return { added, dup, skipped, needChoice, problems, newRoms };
+}
+
+function reportImport(r, { prefix = '', quietIfNone = false } = {}) {
   const parts = [];
-  if (added) parts.push(`Added ${added} game${added > 1 ? 's' : ''}`);
-  if (dup) parts.push(`${dup} already in library`);
-  if (skipped) parts.push(`${skipped} skipped`);
-  if (problems.length) parts.push(problems[0]);
-  if (parts.length) toast(parts.join(' · '), { sticky: problems.length ? 6000 : 0 });
-  if (newRoms.length) fetchMissingArt(roms.filter((r) => newRoms.includes(r.id)), { quiet: true });
+  if (r.added) parts.push(`Added ${r.added} game${r.added > 1 ? 's' : ''}`);
+  if (r.dup) parts.push(`${r.dup} already in library`);
+  if (r.needChoice) parts.push(`${r.needChoice} need a system choice — add with ＋`);
+  if (r.skipped) parts.push(`${r.skipped} skipped`);
+  if (r.problems && r.problems.length) parts.push(r.problems[0]);
+  if (!parts.length && quietIfNone) return;
+  toast(prefix + (parts.join(' · ') || 'No new games found'), { sticky: (r.problems && r.problems.length) || r.needChoice ? 6000 : 0 });
+  if (r.newRoms && r.newRoms.length) fetchMissingArt(roms.filter((x) => r.newRoms.includes(x.id)), { quiet: true });
+}
+
+async function addFiles(files) {
+  const r = await importFiles(files, { interactive: true });
+  await refresh();
+  reportImport(r);
 }
 
 $('#file-input').addEventListener('change', async (e) => {
@@ -306,6 +323,7 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row', id: 'btn-bios', textContent: '🔑 BIOS files…', onclick: () => { d.close(); openBios($('#bios'), toast); } }),
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
+    el('button', { className: 'row', id: 'btn-folders-settings', textContent: '📁 ROM folders…', onclick: () => { d.close(); drawFolders(); } }),
     el('button', { className: 'row', id: 'btn-backup', textContent: '💾 Backup & restore…', onclick: () => { d.close(); openBackup($('#backup'), toast); } }),
     el('button', { className: 'row', id: 'btn-update', textContent: `🔄 Check for updates (version ${currentBuild().version})`, onclick: async (e) => { const b = e.currentTarget; b.disabled = true; const m = await checkForUpdates({ manual: true }); b.disabled = false; toast(m || 'Checked.'); } }),
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
@@ -340,6 +358,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 initUpdates();
 addEventListener('pageshow', (e) => { if (e.persisted) refresh(); });
 refresh().catch((e) => { console.error(e); toast('Could not open local storage (private mode?).'); });
+initFolders({ importFiles, refresh, getRoms: () => db.allRoms(), toast, report: reportImport });
 
 /* ---------- physical controllers: connect toasts + library navigation ---------- */
 let padSig = '';

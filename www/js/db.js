@@ -1,6 +1,6 @@
 // Tiny IndexedDB wrapper: ROM library + auto-resume states. ROMs are stored as ArrayBuffers
 // (more reliable than Blobs in older iOS Safari builds).
-const DB_NAME = 'retro-pocket', VERSION = 3;
+const DB_NAME = 'retro-pocket', VERSION = 4;
 let dbp;
 function open() {
   if (dbp) return dbp;
@@ -12,6 +12,7 @@ function open() {
       if (!db.objectStoreNames.contains('states')) db.createObjectStore('states', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('art')) db.createObjectStore('art', { keyPath: 'id' });     // cover art per ROM id
       if (!db.objectStoreNames.contains('bios')) db.createObjectStore('bios', { keyPath: 'id' });   // user-supplied BIOS files (never bundled), id = system/name
+      if (!db.objectStoreNames.contains('folders')) db.createObjectStore('folders', { keyPath: 'id' }); // remembered ROM folders (FS Access handles / Android SAF tree URIs / iOS import records)
       if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'id' });   // cached thumbnail name indexes
     };
     req.onsuccess = () => resolve(req.result);
@@ -46,6 +47,9 @@ export const putBios = (b) => tx('bios', 'readwrite', (s) => s.put(b));
 export const allBios = () => tx('bios', 'readonly', (s) => s.getAll());
 export const deleteBios = (id) => tx('bios', 'readwrite', (s) => s.delete(id));
 export const biosFor = async (system) => (await allBios()).filter((b) => b.system === system);
+export const putFolder = (f) => tx('folders', 'readwrite', (s) => s.put(f));
+export const allFolders = () => tx('folders', 'readonly', (s) => s.getAll());
+export const deleteFolder = (id) => tx('folders', 'readwrite', (s) => s.delete(id));
 export const allStateIds = () => tx('states', 'readonly', (s) => s.getAllKeys());
 
 export async function sha256Hex(buf) {

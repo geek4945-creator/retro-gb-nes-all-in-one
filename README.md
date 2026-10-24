@@ -140,6 +140,23 @@ EmulatorJS' own bottom control bar (it popped up when you touched "dead" areas, 
 
 Tested in `node tests/ingame.mjs` (dead-zone taps, long-press, swipe, desktop hover/click/right-click, ☰ placement/size, every menu function, settings panel, auto-fade, position/auto-hide settings, landscape) and in `tests/dstouch.mjs` (DS dead zones, ☰ does not reach the stylus). Not tested: a real phone / iOS Safari (safe-area insets with a real notch are only checked by CSS `env()`), real fullscreen on iOS, a multi-disc game (the Disc button is verified hidden for single-disc games).
 
+## 📁 ROM folders & "Scan for new ROMs"
+
+The library has a **Scan** button and a **📁 ROM folders** button. Single files can still be added with **＋ Add games**.
+
+| Platform | How it works |
+|---|---|
+| **Android APK** | Tap **🔄 Scan for new ROMs**. The Android folder picker opens at **Download/**; choose any folder (or several, via ROM folders → Add). Permission is kept, so later scans and the automatic scan at launch read the folder directly (subfolders included). |
+| **Chrome / Edge (desktop & Android browser)** | Same flow, using the File System Access API. Folders are remembered. If the browser asks again after a restart, tap **Rescan** to allow access. |
+| **iPhone / iPad (Safari, Home Screen app)** | Tap **📥 Scan Downloads**, then **Browse → Downloads → Select (top right) → Select All → Open**. Safari can't open a folder by itself or remember it, so do this each time you've downloaded new games. Only new games are added; the last import time is shown in ROM folders. |
+| **Firefox** | "Import a whole folder" (directory upload); same de-duplication. |
+
+- Only **new** files are added. Matching uses the path/size/date index, then name+size and the content hash against the library.
+- Pictures, text, saves, and other non-game files are skipped. `.zip`, `.7z`, and every supported ROM extension are imported. `.cue`/`.m3u` files are imported together with the `.bin`/track files they reference.
+- Scans never stop to ask questions. A file whose system can't be detected (e.g. a bare `.bin`) is reported as "need a system choice"; add it with **＋**.
+- Games are copied into the app's storage, so they keep working offline and when the folder is gone. Removing a folder never deletes games.
+- Settings → **📁 ROM folders…** lists the folders with their file count and last scan time, plus Rescan, Remove, and scan progress.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.
