@@ -87,7 +87,16 @@ Android only installs an update **over** an existing app when the new APK is sig
 **Exact steps**
 1. **One time only (because of the old key):** uninstall the old *Retro Pocket* app (Settings → Apps → Retro Pocket → Uninstall). ⚠️ This deletes the library, save states and BIOS files, which live in the app's WebView storage — the old builds have no export function, so they cannot be saved; keep your original ROM files. (Alternatively keep using the web app/PWA, whose data is separate.)
 2. Install the newest `RetroPocket-debug.apk` from the Releases page.
-3. **From now on** just download and open the next APK: it installs **over** the current one and keeps your data. You can also check inside the app: **Settings → 🔄 Check for updates** (shows a *Download APK* banner when a newer build exists).
+3. **From now on** updates install **over** the current app and keep your data. Inside the app: when a newer build exists (or after **Settings → 🔄 Check for updates**) you get an **Update now** banner (see *In-app APK updates* below).
+
+### ⬇️ In-app APK updates
+Builds from 1.0.27 (versionCode 1027) on update themselves. Install **one** of these builds the old way (browser download) first; after that:
+1. Tap **Update now**. The APK downloads **inside the app**, with a percentage, a progress bar and **Cancel**.
+2. The app checks the download before anything is installed. It must be a valid APK of `com.retropocket.app`, signed with the **same certificate** as the installed app, and have a **higher versionCode**. If a check fails you get an error and nothing is installed.
+3. Android 8+ asks once to allow **"Install unknown apps"** for Retro Pocket. The banner explains this and **Open settings** goes straight to that switch. Come back and the install continues.
+4. The Android installer opens. Tap **Update**; your library, saves and settings stay.
+
+Old and already-installed downloads are deleted at start-up. If a finished download is still waiting (for example, Android restarted the app after the settings screen), you get **Install now** instead of a second download. Without the native plugin (older APKs) or if the download fails, it falls back to the browser download link. The web app / iPhone is unchanged (*Update available — Reload*). Native code: `android/app/src/main/java/com/retropocket/app/AppUpdaterPlugin.java` (permission `REQUEST_INSTALL_PACKAGES`, FileProvider path `cache/updates/`). Tested with a mocked plugin by `node tests/appupdate.mjs`.
 4. Before any future uninstall/reinstall (or moving to another phone): **Settings → 💾 Backup & restore → Export backup** (games, states, cover art, BIOS, settings in one ZIP) and import it afterwards. (Some Android app WebViews cannot save downloaded files; if the export does not produce a file, use the web app in Chrome for the backup.)
 
 Verified on two consecutive CI builds (1.0.15 → versionCode 1015, then the next one): identical signer certificate, higher versionCode.
@@ -367,6 +376,7 @@ node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
 node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
 node tests/update.mjs     # service-worker updates (no stale files, banner, offline), APK update prompt, backup/restore
+node tests/appupdate.mjs  # in-app APK update flow with a mocked native plugin (progress, cancel, permission, verification, fallbacks)
 node tests/ingame.mjs     # in-game ☰ menu, no bottom bar pop-up (headless Chrome, touch/mouse)
 node tests/dstouch.mjs    # DS touchscreen: probe ROM, both cores, synthetic touch/mouse (headless Chrome)
 node tests/hash.mjs       # md5 implementation (no browser)

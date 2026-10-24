@@ -85,5 +85,5 @@ jobs:
           fi
           gh release create "$TAG" RetroPocket-debug.apk $EXTRA \
             --title "Retro Pocket $TAG (debug APK)" \
-            --notes "Android APK (build $RP_BUILD, versionCode $RP_VERSION_CODE, version $RP_VERSION_NAME). Signed with the project's stable key (certificate SHA-256 $SIGNER_SHA256), so it installs OVER the previous build and keeps your library. First install of this signing key (or coming from the older builds): uninstall the old app once. Enable *Install unknown apps* for your browser/file manager, then open the APK. Bring your own ROMs." \
+            --notes "Android APK (build $RP_BUILD, versionCode $RP_VERSION_CODE, version $RP_VERSION_NAME). Signed with the project's stable key (certificate SHA-256 $SIGNER_SHA256), so it installs OVER the previous build and keeps your library. First install of this signing key (or coming from the older builds): uninstall the old app once. Enable *Install unknown apps* for your browser/file manager, then open the APK. From version 1.0.27 on the app updates itself: Settings → Check for updates → *Update now* (downloads, verifies the signature and version, opens the Android installer). Bring your own ROMs." \
             --target "$GITHUB_SHA"
