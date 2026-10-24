@@ -5,7 +5,7 @@ const RUNTIME = 'retro-pocket-ejs-v3';      // the EmulatorJS cores cache is ver
 const SHELL_FILES = [
   './', 'index.html', 'player.html', 'join.html', 'manifest.webmanifest',
   'css/app.css', 'css/player.css', 'css/join.css', 'vendor/peerjs.min.js',
-  'js/app.js', 'js/art.js', 'js/cover.js', 'js/pads.js', 'js/padnav.js', 'js/padsui.js', 'js/cores.js', 'js/db.js', 'js/player.js', 'js/detect.js', 'js/bios.js', 'js/biosui.js', 'js/biosdata.js', 'js/hash.js', 'js/dstouch.js', 'js/dsui.js', 'js/ingameui.js', 'js/updates.js', 'js/backup.js', 'js/folders.js', 'js/foldersui.js', 'js/netcfg.js', 'js/netplay.js', 'js/cloud.js', 'js/retroach.js', 'js/cheats.js', 'js/meta.js', 'js/touchlayout.js', 'js/join.js', 'js/version.js',
+  'js/app.js', 'js/art.js', 'js/cover.js', 'js/pads.js', 'js/padnav.js', 'js/padsui.js', 'js/cores.js', 'js/db.js', 'js/player.js', 'js/detect.js', 'js/bios.js', 'js/biosui.js', 'js/biosdata.js', 'js/hash.js', 'js/dstouch.js', 'js/dsui.js', 'js/ingameui.js', 'js/updates.js', 'js/backup.js', 'js/folders.js', 'js/foldersui.js', 'js/netcfg.js', 'js/netplay.js', 'js/cloud.js', 'js/retroach.js', 'js/cheats.js', 'js/meta.js', 'js/touchlayout.js', 'js/video.js', 'js/join.js', 'js/version.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
 ];
 

@@ -263,6 +263,23 @@ Layouts are saved **per system**, re-applied every time a game starts, and inclu
 
 Analog sticks can be moved but not resized.
 
+## ⏪ Rewind, fast-forward & screen filters
+
+- **⏪ / ⏩ next to ☰.** While a game runs, two small buttons sit beside the menu button and fade with it. **Hold ⏪** to rewind and let go to keep playing. **Tap ⏩** to switch fast-forward on or off. You can hide them with **☰ → ⏪⏩ Top buttons**.
+- **☰ → ⏪ Rewind: On/Off.** This is saved per system and takes effect the next time the game starts, because RetroArch sets up its rewind buffer at launch.
+  - **On by default** for the light 8/16-bit and handheld systems: NES, SNES, GB/GBC/GBA, Master System, Game Gear, SG-1000, Mega Drive, PC Engine, Atari 2600/7800, Lynx, Neo Geo Pocket, WonderSwan, Virtual Boy and ColecoVision.
+  - **Off by default** for 3D/CD systems, where saving a state every few frames costs too much speed and memory on phones.
+  - **RetroAchievements hardcore** always turns rewind off.
+- **☰ → ✨ Screen filter** cycles through these filters, saved per system:
+  - **Off** (sharp pixels, the default)
+  - **CRT** (zfast: scanlines and mask, cheap enough for phones)
+  - **CRT (curved)** (crt-geom)
+  - **LCD grid** (Retro Pocket's own shader: pixel grid with faint RGB sub-pixels, made for GB/GBA/handhelds)
+  - **Smooth** (bicubic)
+  - **HQ 2×**
+
+  Filters are WebGL shaders. Heavier ones (CRT curved, HQ 2×) can cost speed on older phones.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

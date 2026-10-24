@@ -6,6 +6,7 @@ import { hardcoreOn, achievementsPanel } from './retroach.js';
 import { cheatsPanel, applyCheats, loadCheats } from './cheats.js';
 import { startSession, trackPlay } from './meta.js';
 import { applyLayout, editLayout } from './touchlayout.js';
+import { FILTERS, loadFilter, saveFilter, nextFilter, applyFilter, loadRewind, saveRewind, loadQuick, saveQuick, quickBar, RP_SHADERS } from './video.js';
 let playTracker = null;
 import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
@@ -190,6 +191,7 @@ function refreshMenu() {
   const e = emu(); if (!e) return;
   $('#pm-sound').textContent = `${e.muted ? '🔇' : '🔊'} Sound: ${e.muted ? 'Off' : 'On'}`;
   $('#pm-ff').textContent = `⏩ Fast-forward: ${e.isFastForward ? 'On' : 'Off'}`;
+  paintVideoMenu();
   $('#pm-full').hidden = !fsSupported(); $('#pm-full').textContent = isFull() ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
   $('#pm-cheats').hidden = HARDCORE; $('#pm-load').hidden = HARDCORE; $('#pm-controls').hidden = !barOn(/control/i);
   $('#pm-disc').hidden = !(e.diskParent && e.diskParent.style.display !== 'none' && e.gameManager && e.gameManager.getDiskCount() > 1);
@@ -199,7 +201,23 @@ $('#pm-sound').onclick = () => {
   const e = emu(); if (e.muted) { if (!e.volume) e.volume = 0.5; e.muted = false; e.setVolume(e.volume); } else { e.muted = true; e.setVolume(0); }
   refreshMenu();
 };
-$('#pm-ff').onclick = () => { try { emu().changeSettingOption('fastForward', emu().isFastForward ? 'disabled' : 'enabled'); } catch {} refreshMenu(); };
+$('#pm-ff').onclick = () => { try { emu().changeSettingOption('fastForward', emu().isFastForward ? 'disabled' : 'enabled'); } catch {} refreshMenu(); quick.paint(); };
+/* ---------- rewind, screen filter (shaders) and the ⏪ / ⏩ quick buttons next to ☰ (see video.js) ---------- */
+const rewindActive = () => !HARDCORE && !!(emu() && emu().rewindEnabled);
+const quick = quickBar({ emu, canRewind: rewindActive, onChange: () => { if (menuOpen) refreshMenu(); } });
+document.body.append(quick.el);
+new MutationObserver(() => { quick.el.dataset.pos = mbtn.dataset.pos; quick.el.className = mbtn.className; }).observe($('#menu-btn'), { attributes: true });
+function paintVideoMenu() {
+  if (!rom) return;
+  const want = loadRewind(rom.system), now = rewindActive();
+  $('#pm-rewind').hidden = HARDCORE;
+  $('#pm-rewind').textContent = `⏪ Rewind: ${want ? 'On' : 'Off'}${want !== now ? ' (after restart)' : ''}`;
+  $('#pm-filter').textContent = `✨ Screen filter: ${FILTERS[loadFilter(rom.system)].label}`;
+  $('#pm-quick').textContent = `⏪⏩ Top buttons: ${loadQuick() ? 'On' : 'Off'}`;
+}
+$('#pm-rewind').onclick = () => { saveRewind(rom.system, !loadRewind(rom.system)); refreshMenu(); say(loadRewind(rom.system) === rewindActive() ? `Rewind ${rewindActive() ? 'on' : 'off'}` : 'Rewind setting saved: it takes effect the next time this game starts'); };
+$('#pm-filter').onclick = () => { const k = nextFilter(loadFilter(rom.system)); saveFilter(rom.system, k); if (!applyFilter(emu(), k) && k !== 'off') say('This filter is not available in this EmulatorJS copy'); refreshMenu(); };
+$('#pm-quick').onclick = () => { saveQuick(!loadQuick()); quick.show(started && loadQuick()); refreshMenu(); };
 $('#pm-shot').onclick = () => {
   try { emu().screenshot((blob, format) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${(rom.title || 'screenshot').replace(/[^\w.-]+/g, '_')}-${Date.now()}.${format || 'png'}`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('Screenshot saved'); }); } catch { say('Screenshot failed'); }
   setMenu(false);
@@ -344,9 +362,10 @@ requestAnimationFrame(hotkeys);
   if (rom.system === 'nds') {
     try { ds = await import('./dstouch.js'); Object.assign(window.EJS_defaultOptions, ds.initialOptions(rom.core)); window.EJS_defaultOptions.lockMouse = 'disabled'; } catch (e) { console.warn('DS touch unavailable', e); ds = null; }
   }
-  window.EJS_ready = () => { status.hidden = true; };
+  window.EJS_ready = () => { status.hidden = true; try { emu().rewindEnabled = !HARDCORE && loadRewind(rom.system); } catch {} };   // read by the GameManager when the game starts
+  window.EJS_shaders = RP_SHADERS;   // our LCD grid next to EmulatorJS' built-in shaders
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } }, 50); };
+  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } if (loadFilter(rom.system) !== 'off') applyFilter(emu(), loadFilter(rom.system)); quick.show(loadQuick()); }, 50); };
 
   if (HARDCORE) Object.assign(window.EJS_defaultOptions, { rewindEnabled: 'disabled', 'slowMotion': 'disabled' });
   if (params.get('resume') === '1' && !HARDCORE) {
