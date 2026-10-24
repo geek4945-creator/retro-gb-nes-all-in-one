@@ -296,6 +296,9 @@ async function openSheet(r) {
   rows.push(el('button', { className: 'row', id: 'sheet-fav', textContent: meta.isFav(r.id) ? '★ Remove from favorites' : '☆ Add to favorites', onclick: (e) => {
     const f = meta.toggleFav(r.id); e.currentTarget.textContent = f ? '★ Remove from favorites' : '☆ Add to favorites'; render(); toast(f ? 'Added to favorites' : 'Removed from favorites');
   } }));
+  const note = el('textarea', { id: 'sheet-note', className: 'note', rows: 2, maxLength: 200, placeholder: '📝 Compatibility note (e.g. "works best on melonDS", "slow on phone")', value: meta.getNote(r.id),
+    onchange: () => { meta.setNote(r.id, note.value); toast('Note saved'); } });
+  rows.push(note);
   rows.push(el('button', { className: 'row', id: 'sheet-cols', textContent: '📁 Collections…', onclick: () => openCollections(r) }));
   rows.push(el('button', { className: 'row', textContent: '🖼 Change cover…', onclick: () => {
     d.close();

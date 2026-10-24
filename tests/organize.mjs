@@ -59,8 +59,16 @@ try {
     await page.reload({ waitUntil: 'networkidle0' }); await page.click('#chips .chip[data-f="all"]'); await page.select('#sort', 'played');
     const n = await names(page); assert(n[0] === 'Mega Test' && n[1] === 'alpha Run', n.join());
     const pt = await page.$eval('#library .card .ptime', (e) => e.textContent); assert(pt === '⏱ 3h 5m', pt);
-    await (await (await page.$$('#library .card'))[0].$('.more')).evaluate((e) => e.click()); const s = await page.$eval('#sheet-play', (e) => e.textContent); assert(/Played 3h 5m/.test(s), s);
+    await (await (await page.$$('#library .card'))[0].$('.more')).evaluate((e) => e.click()); await page.waitForSelector('#sheet-play', { visible: true }); const s = await page.$eval('#sheet-play', (e) => e.textContent); assert(/Played 3h 5m/.test(s), s);
     await page.evaluate(() => document.getElementById('sheet').close()); await page.screenshot({ path: 'tests/out/organize.png' }); return s;
+  });
+  await step('📝 per-game compatibility note is saved from the sheet and shown again', async () => {
+    await (await (await page.$$('#library .card'))[0].$('.more')).evaluate((e) => e.click()); await page.waitForSelector('#sheet-note', { visible: true });
+    await page.type('#sheet-note', 'works best on PicoDrive'); await page.$eval('#sheet-note', (e) => e.dispatchEvent(new Event('change')));
+    await page.evaluate(() => document.getElementById('sheet').close());
+    await (await (await page.$$('#library .card'))[0].$('.more')).evaluate((e) => e.click()); await page.waitForSelector('#sheet-note', { visible: true });
+    const v = await page.$eval('#sheet-note', (e) => e.value); await page.evaluate(() => document.getElementById('sheet').close());
+    assert(v === 'works best on PicoDrive', v); return v;
   });
   await step('removing a game cleans its favorite/collection entries; meta is in backups', async () => {
     await (await (await page.$$('#library .card'))[0].$('.more')).evaluate((e) => e.click()); await page.waitForSelector('#sheet .row.danger');

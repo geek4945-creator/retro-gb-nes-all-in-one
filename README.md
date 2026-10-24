@@ -280,6 +280,12 @@ Analog sticks can be moved but not resized.
 
   Filters are WebGL shaders. Heavier ones (CRT curved, HQ 2×) can cost speed on older phones.
 
+## 🧭 Compatibility, cores & per-game notes
+
+- Retro Pocket stays on **EmulatorJS 4.2.3**, the latest stable release. The 4.3.0-pre pre-release was tested and regresses N64 and PSP, so it is not used yet. The full results and the core and new-system evaluation are in [docs/compatibility.md](docs/compatibility.md).
+- **Switch core per game:** in the library, tap a game's **⋯** and pick **Core**. If a core crashes right at start, the player also falls back to the other core automatically.
+- **📝 Compatibility note:** in the same sheet you can write a short note for each game, such as "works best on melonDS". It appears in the in-game ☰ menu and is included in Backup.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

@@ -5,6 +5,9 @@ const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; 
 export const allMeta = () => read(MK, {});
 export const meta = (id) => allMeta()[id] || {};
 export function setMeta(id, patch) { const m = allMeta(); m[id] = { ...(m[id] || {}), ...patch }; localStorage.setItem(MK, JSON.stringify(m)); return m[id]; }
+// per-game compatibility note ("runs best on melonDS", "slow on my phone"): shown in the game sheet and the in-game ☰ menu
+export const getNote = (id) => meta(id).note || '';
+export const setNote = (id, t) => setMeta(id, { note: String(t || '').trim().slice(0, 200) }).note;
 export const isFav = (id) => !!meta(id).fav;
 export const toggleFav = (id) => setMeta(id, { fav: !isFav(id) }).fav;
 export function addPlay(id, ms) { if (!(ms > 0)) return; const m = meta(id); setMeta(id, { play: (m.play || 0) + Math.round(ms), last: Date.now() }); }

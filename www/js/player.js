@@ -4,7 +4,7 @@ import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
 import { hardcoreOn, achievementsPanel } from './retroach.js';
 import { cheatsPanel, applyCheats, loadCheats } from './cheats.js';
-import { startSession, trackPlay } from './meta.js';
+import { startSession, trackPlay, getNote } from './meta.js';
 import { applyLayout, editLayout } from './touchlayout.js';
 import { FILTERS, loadFilter, saveFilter, nextFilter, applyFilter, loadRewind, saveRewind, loadQuick, saveQuick, quickBar, RP_SHADERS } from './video.js';
 let playTracker = null;
@@ -173,7 +173,7 @@ function quickLoad() { if (HARDCORE) { say('Hardcore mode: loading states is dis
 function setMenu(open) {
   if (!started || crashed) return; if (!open && panelOpen()) closePanel(); menuOpen = open; menuEl.hidden = !open; wake();
   try { open ? emu().pause(true) : emu().play(true); } catch {}
-  if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', HARDCORE ? '🏆 hardcore' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
+  if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', HARDCORE ? '🏆 hardcore' : '', sy.hint || '', getNote(rom.id) ? '📝 ' + getNote(rom.id) : ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
   window.__rpMenuOpen = open;
   if (np && np.isHosting()) np.broadcast({ t: 'paused', paused: open });
 }
