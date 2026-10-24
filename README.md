@@ -177,6 +177,32 @@ Play with or against friends over the internet or on the same Wi-Fi.
 - iPhone guests: Safari plays the stream muted until you tap **🔇 Tap for sound**. Hosting from iPhone works too, but iOS stops the game when Safari goes to the background.
 - The Android app's share link points to the web version (`…github.io/…/join.html`), so friends need nothing installed.
 
+## ☁️ Cloud save sync (Google Drive)
+
+Settings → **☁️ Cloud save sync** keeps your **in-game (battery) saves and auto-resume states** in sync between your devices: iPhone, Android Chrome and desktop.
+- They are stored in the hidden *app data* folder of **your own Google Drive** (`drive.appdata` scope). Retro Pocket cannot see any of your other files, and the folder doesn't clutter your Drive.
+- Games, BIOS files and API keys are **never uploaded**.
+- Per file, the newest copy wins. Identical files are skipped (SHA-256). Nothing is ever deleted from the cloud.
+- After you sign in, it syncs automatically each time you come back to the library from a game. **Sync now** syncs on demand.
+- Battery saves are matched by the game's **file name**, and auto-resume states by the ROM's content hash. So keep the same ROM file names on all devices.
+
+**One-time setup (you need your own free OAuth client ID; Google requires one per web app):**
+1. Open <https://console.cloud.google.com/> → create a project (e.g. "Retro Pocket").
+2. **APIs & Services → Library → Google Drive API → Enable.**
+3. **APIs & Services → OAuth consent screen** (Google Auth Platform → Branding/Audience):
+   - User type **External**, app name "Retro Pocket", your e-mail.
+   - Under **Data access** add the scope `.../auth/drive.appdata`.
+   - Under **Audience** add your Google account(s) as **test users**. While the app is in "Testing", only those accounts can sign in, and Google asks again every 7 days. To lift that, click *Publish app*: `drive.appdata` is not a restricted scope, so no security review is needed.
+4. **Clients (Credentials) → Create OAuth client ID → Web application.**
+   - Authorized JavaScript origins: `https://geek4945-creator.github.io` (plus your own domain or `http://localhost:8080` if you self-host).
+   - No redirect URI is needed.
+5. Copy the client ID (`….apps.googleusercontent.com`). In Retro Pocket go to Settings → ☁️ Cloud save sync, paste it, then tap **Sign in with Google & sync**. Do this on each device; the client ID is also included in backups.
+
+**Limits:**
+- Google blocks OAuth sign-in inside app WebViews. In the **Android APK** cloud sync is therefore not available. Use the web app in Chrome on Android (it shares the same saves via Drive), or use Backup & restore.
+- Background sync needs a sign-in from the current app session. After the app is fully closed, tap *Sync now* once (one tap, no password if you're signed in to Google).
+- Don't play the same game on two devices at once: the newest save wins.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

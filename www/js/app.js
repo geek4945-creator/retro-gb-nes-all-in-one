@@ -11,6 +11,7 @@ import { openMenuBtnSettings } from './ingameui.js';
 import { initUpdates, checkForUpdates, currentBuild, isApk } from './updates.js';
 import { openBackup } from './backup.js';
 import { initFolders, drawFolders } from './foldersui.js';
+import * as cloud from './cloud.js';
 import { loadNet, saveNet, DEFAULT_STUN, parseServer } from './netcfg.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
@@ -326,6 +327,7 @@ $('#btn-settings').onclick = async () => {
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
     el('button', { className: 'row', id: 'btn-folders-settings', textContent: '📁 ROM folders…', onclick: () => { d.close(); drawFolders(); } }),
     el('button', { className: 'row', id: 'btn-net', textContent: '🌐 Online play (netplay)…', onclick: () => openNetSettings(d) }),
+    el('button', { className: 'row', id: 'btn-cloud', textContent: '☁️ Cloud save sync (Google Drive)…', onclick: () => openCloud(d) }),
     el('button', { className: 'row', id: 'btn-backup', textContent: '💾 Backup & restore…', onclick: () => { d.close(); openBackup($('#backup'), toast); } }),
     el('button', { className: 'row', id: 'btn-update', textContent: `🔄 Check for updates (version ${currentBuild().version})`, onclick: async (e) => { const b = e.currentTarget; b.disabled = true; const m = await checkForUpdates({ manual: true }); b.disabled = false; toast(m || 'Checked.'); } }),
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
@@ -358,6 +360,44 @@ function openNetSettings(d) {
     el('button', { className: 'row ghost', textContent: 'Back', onclick: () => $('#btn-settings').click() }));
 }
 
+function openCloud(d) {
+  const c = cloud.loadCloud();
+  const status = el('p', { className: 'muted small', id: 'cloud-status' });
+  const show = () => {
+    const cc = cloud.loadCloud(), r = cc.lastResult;
+    status.textContent = (cc.email ? `Signed in as ${cc.email}. ` : 'Not signed in. ') + (cc.last ? `Last sync ${new Date(cc.last).toLocaleString()}${r ? ` (↑${r.up} ↓${r.down} =${r.same})` : ''}.` : 'Never synced.');
+  };
+  const run = async (fn, btn) => {
+    btn.disabled = true;
+    try { await fn(); } catch (e) { toast(e.message || String(e), { sticky: 5000 }); } finally { btn.disabled = false; show(); }
+  };
+  const doSync = async (interactive) => {
+    const r = await cloud.syncNow({ interactive, onProgress: (m) => { status.textContent = m; } });
+    toast(`☁️ Synced: ${r.up} uploaded, ${r.down} downloaded, ${r.same} unchanged`); if (r.down) refresh();
+  };
+  d.replaceChildren(el('h3', { textContent: 'Cloud save sync' }),
+    el('p', { className: 'muted small', textContent: 'Keeps in-game saves and auto-resume states in sync between your devices through a hidden Retro Pocket folder in your Google Drive (it cannot see your other files). Games and BIOS files are never uploaded. The newest copy of each save wins.' }),
+    cloud.isApkWebView() ? el('p', { className: 'small warn-txt', textContent: 'Google does not allow sign-in inside app WebViews, so on Android use the web version in Chrome (Pages link → Add to Home screen) for cloud sync. Your saves are the same game files, so they sync between Chrome, iPhone and desktop.' }) : '',
+    el('label', { className: 'row field' }, el('span', { textContent: 'Google OAuth client ID (README → Cloud save sync)' }),
+      el('input', { id: 'cloud-client', value: c.clientId || '', placeholder: '1234-abc.apps.googleusercontent.com', autocomplete: 'off', spellcheck: false,
+        onchange: (e) => { const cc = cloud.loadCloud(); cc.clientId = e.target.value.trim(); cloud.saveCloud(cc); } })),
+    el('label', { className: 'row select' }, 'Sync automatically when the library opens',
+      el('input', { type: 'checkbox', id: 'cloud-auto', checked: c.auto !== false, onchange: (e) => { const cc = cloud.loadCloud(); cc.auto = e.target.checked; cloud.saveCloud(cc); } })),
+    el('button', { className: 'row primary', id: 'cloud-signin', textContent: c.email ? '🔄 Sync now' : '🔑 Sign in with Google & sync', onclick: (e) => run(async () => {
+      const cc = cloud.loadCloud(); if (!cloud.validClientId(cc.clientId)) throw new Error('Enter a valid OAuth client ID (…apps.googleusercontent.com)');
+      if (!cc.email) await cloud.signIn();
+      await doSync(true); e.target.textContent = '🔄 Sync now';
+    }, e.target) }),
+    status,
+    el('button', { className: 'row', id: 'cloud-signout', textContent: 'Sign out', onclick: () => { cloud.signOut(); show(); toast('Signed out of Google Drive'); } }),
+    el('button', { className: 'row ghost', textContent: 'Back', onclick: () => $('#btn-settings').click() }));
+  show();
+}
+async function autoCloudSync() {          // only with a token from this app session (no popups); runs after returning from a game
+  const c = cloud.loadCloud(); if (c.auto === false || !c.email || !cloud.hasSession()) return;
+  try { const r = await cloud.syncNow(); if (r.down) refresh(); if (r.up || r.down) toast(`☁️ Saves synced (↑${r.up} ↓${r.down})`, { soft: true }); } catch (e) { console.warn('cloud sync', e); }
+}
+
 function openCoreDefaults(d) {
   const keys = sortedSystemKeys().filter((k) => !['gb', 'gbc', 'nes', 'nds'].includes(k) && SYSTEMS[k].cores.length > 1);
   d.replaceChildren(el('h3', { textContent: 'Default cores' }),
@@ -378,7 +418,8 @@ $('#hint-close').onclick = () => { $('#install-hint').hidden = true; localStorag
 
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 initUpdates();
-addEventListener('pageshow', (e) => { if (e.persisted) refresh(); });
+addEventListener('pageshow', (e) => { if (e.persisted) { refresh(); autoCloudSync(); } });
+setTimeout(autoCloudSync, 1500);
 refresh().catch((e) => { console.error(e); toast('Could not open local storage (private mode?).'); });
 initFolders({ importFiles, refresh, getRoms: () => db.allRoms(), toast, report: reportImport });
 
