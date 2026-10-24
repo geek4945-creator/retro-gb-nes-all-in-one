@@ -3,7 +3,8 @@
 //   newer build -> "Update now" -> progress % + Cancel -> cancel -> retry -> verified download -> "Install unknown apps" not allowed
 //   -> one-line explanation + Open settings -> back with permission -> installer opened with the downloaded path;
 //   permission granted outside the app + return (visibilitychange) also resumes; signature / version check failures never install;
-//   network failure and a missing plugin fall back to the browser download link; a waiting download is offered at start-up.
+//   network failure and a missing plugin fall back to the browser download link; a waiting download is offered in Settings.
+// Since 1.0.29 all of this lives in Settings → Check for updates (#update-panel); nothing is ever shown on the main screen by itself.
 import puppeteer from 'puppeteer-core';
 import { spawn } from 'node:child_process';
 const PORT = Number(process.env.PORT || 18000 + Math.floor(Math.random() * 20000)), base = `http://localhost:${PORT}/`;
@@ -54,7 +55,7 @@ function mockBridge(plugin, initial) {
   };
 }
 
-async function openApp({ plugin = true, mock = {} } = {}) {
+async function openApp({ plugin = true, mock = {}, check = true } = {}) {
   const page = await (await browser.createBrowserContext()).newPage();
   const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.errs = errs;
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
@@ -66,23 +67,32 @@ async function openApp({ plugin = true, mock = {} } = {}) {
     const u = r.url();
     if (u.startsWith('https://geek4945-creator.github.io/')) return r.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ build: 103, version: '1.0.103', sha: 'abc', date: '' }) });
     if (u.startsWith('https://github.com/')) { page.navigations.push(u); return r.respond({ status: 204, body: '' }); }
+    if (u.endsWith('/js/version.js')) return r.respond({ status: 200, contentType: 'text/javascript', body: "export const BUILD = 102;\nexport const VERSION = '1.0.102';\nexport const SHA = 'test';\n" });   // the installed APK is 1.0.102
     r.continue();
   });
   await page.goto(base + 'index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#btn-settings'); await sleep(300);
+  if (check) { await page.click('#btn-settings'); await page.waitForSelector('#btn-update'); await page.click('#btn-update'); }
   return page;
 }
-const banner = (p) => p.$eval('#update-banner', (e) => (e.hidden ? '[hidden] ' : '') + e.textContent).catch(() => '');
+const banner = (p) => p.$eval('#update-panel', (e) => (e.hidden ? '[hidden] ' : '') + e.textContent).catch(() => '');
 const calls = (p, m) => p.evaluate((m) => window.__calls.filter((c) => c.method === m), m);
-const waitBanner = (p, re, timeout = 8000) => p.waitForFunction((src) => { const b = document.getElementById('update-banner'); return b && !b.hidden && new RegExp(src).test(b.textContent); }, { timeout }, re.source).catch(async () => { throw new Error('banner never matched ' + re + ': ' + await banner(p)); });
+const waitBanner = (p, re, timeout = 8000) => p.waitForFunction((src) => { const b = document.getElementById('update-panel'); return b && !b.hidden && new RegExp(src).test(b.textContent); }, { timeout }, re.source).catch(async () => { throw new Error('banner never matched ' + re + ': ' + await banner(p)); });
 
 try {
+  const p0 = await openApp({ check: false });
+  await step('launch with a newer build available: NO prompt on the main screen (no automatic check), no download', async () => {
+    await sleep(4000); const r = await p0.evaluate(() => ({ visible: !!document.querySelector('#update-panel:not([hidden])'), inDom: !!document.getElementById('update-panel'), text: document.body.innerText }));
+    assert(!r.inDom && !r.visible && !/New app version|Update now|Update available/.test(r.text), JSON.stringify(r).slice(0, 300));
+    assert((await calls(p0, 'download')).length === 0, 'no download');
+  }); await p0.close();
   const page = await openApp({ mock: { allowed: false, steps: 25, stepMs: 80 } });
-  await step('a newer build shows "Update now" (not "Download APK") in the APK with the plugin', async () => {
+  await step('Settings → Check for updates: a newer build shows "Update now" (not "Download APK") inside Settings', async () => {
     await waitBanner(page, /New app version 1\.0\.103.*Update now/, 15000); assert(!/Download APK/.test(await banner(page)));
+    assert(await page.$eval('#update-panel', (e) => !!e.closest('#settings')), 'panel is inside the Settings dialog');
   });
   await step('Settings → Check for updates says "tap Update now"', async () => {
-    await page.click('#btn-settings'); await page.waitForSelector('#btn-update'); await page.click('#btn-update');
-    await page.waitForFunction(() => /tap Update now/.test(document.getElementById('toast').textContent), { timeout: 8000 }); await page.keyboard.press('Escape'); await sleep(300);
+    await page.waitForFunction(() => /tap Update now/.test(document.getElementById('toast').textContent), { timeout: 8000 });
   });
   await step('Update now downloads inside the app: percent + MB + progress bar + Cancel; the URL is the latest release APK', async () => {
     await page.click('#update-go'); await waitBanner(page, /Downloading update… [1-9]\d?% · [\d.]+ \/ 4\.1 MB/);
@@ -120,7 +130,7 @@ try {
   const p3 = await openApp({ mock: { steps: 2, stepMs: 30, downloadError: 'WRONG_SIGNER' } });
   await step('signature / version check failure: error shown, never installed, no install button', async () => {
     await waitBanner(p3, /Update now/, 15000); await p3.click('#update-go'); await waitBanner(p3, /Update not installed: .*different key/);
-    assert(await p3.$eval('#update-banner', (e) => e.classList.contains('error')), 'error style'); assert(!(await p3.$('#update-go')), 'no action button');
+    assert(await p3.$eval('#update-panel', (e) => e.classList.contains('error')), 'error style'); assert(!(await p3.$('#update-go')), 'no action button');
     assert((await calls(p3, 'install')).length === 0, 'install called!'); assert(p3.navigations.length === 0, 'no fallback for a rejected file');
   }); await p3.close();
 
@@ -141,10 +151,11 @@ try {
     assert(p6.navigations.includes(APK_URL), JSON.stringify(p6.navigations)); assert(!(await p6.evaluate(() => window.__calls.length)), 'no native calls');
   }); await p6.close();
 
-  const p7 = await openApp({ mock: { pending: { path: '/data/user/0/com.retropocket.app/cache/updates/RetroPocket-update-9.apk', versionCode: 1103, versionName: '1.0.103-abc' } } });
-  await step('start-up: stale downloads are cleaned (pending() called) and a waiting verified download is offered → Install now', async () => {
-    await waitBanner(p7, /Update 1\.0\.103-abc is downloaded.*Install now/);
-    await sleep(3500); await waitBanner(p7, /is downloaded.*Install now/);   // the automatic update check (2.5 s) must not offer a second download
+  const p7 = await openApp({ check: false, mock: { pending: { path: '/data/user/0/com.retropocket.app/cache/updates/RetroPocket-update-9.apk', versionCode: 1103, versionName: '1.0.103-abc' } } });
+  await step('start-up: stale downloads are cleaned (pending() called); a waiting verified download is offered in Settings (dot on ⚙︎, no banner) → Install now', async () => {
+    await sleep(800); assert(await p7.$eval('#btn-settings', (e) => e.classList.contains('has-update')), 'dot on Settings'); assert(!(await p7.$('body > #update-panel')), 'no banner');
+    await p7.click('#btn-settings'); await waitBanner(p7, /Update 1\.0\.103-abc is downloaded.*Install now/);
+    await p7.click('#btn-update'); await sleep(1500); await waitBanner(p7, /is downloaded.*Install now/);   // Check for updates must not offer a second download
     assert((await calls(p7, 'download')).length === 0, 'no re-download');
     assert((await calls(p7, 'pending')).length >= 1, 'pending/cleanup called');
     await p7.click('#update-go'); await waitBanner(p7, /Installing version/);

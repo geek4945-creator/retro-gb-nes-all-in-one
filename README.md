@@ -87,16 +87,16 @@ Android only installs an update **over** an existing app when the new APK is sig
 **Exact steps**
 1. **One time only (because of the old key):** uninstall the old *Retro Pocket* app (Settings → Apps → Retro Pocket → Uninstall). ⚠️ This deletes the library, save states and BIOS files, which live in the app's WebView storage — the old builds have no export function, so they cannot be saved; keep your original ROM files. (Alternatively keep using the web app/PWA, whose data is separate.)
 2. Install the newest `RetroPocket-debug.apk` from the Releases page.
-3. **From now on** updates install **over** the current app and keep your data. Inside the app: when a newer build exists (or after **Settings → 🔄 Check for updates**) you get an **Update now** banner (see *In-app APK updates* below).
+3. **From now on** updates install **over** the current app and keep your data. Inside the app: open **Settings → 🔄 Check for updates**; when a newer build exists you get **Update now** right there in Settings (there are no pop-ups on the main screen) (see *In-app APK updates* below).
 
 ### ⬇️ In-app APK updates
 Builds from 1.0.27 (versionCode 1027) on update themselves. Install **one** of these builds the old way (browser download) first; after that:
-1. Tap **Update now**. The APK downloads **inside the app**, with a percentage, a progress bar and **Cancel**.
+1. Open **Settings → 🔄 Check for updates** and tap **Update now**. The APK downloads **inside the app**, with a percentage, a progress bar and **Cancel**.
 2. The app checks the download before anything is installed. It must be a valid APK of `com.retropocket.app`, signed with the **same certificate** as the installed app, and have a **higher versionCode**. If a check fails you get an error and nothing is installed.
 3. Android 8+ asks once to allow **"Install unknown apps"** for Retro Pocket. The banner explains this and **Open settings** goes straight to that switch. Come back and the install continues.
 4. The Android installer opens. Tap **Update**; your library, saves and settings stay.
 
-Old and already-installed downloads are deleted at start-up. If a finished download is still waiting (for example, Android restarted the app after the settings screen), you get **Install now** instead of a second download. Without the native plugin (older APKs) or if the download fails, it falls back to the browser download link. The web app / iPhone is unchanged (*Update available — Reload*). Native code: `android/app/src/main/java/com/retropocket/app/AppUpdaterPlugin.java` (permission `REQUEST_INSTALL_PACKAGES`, FileProvider path `cache/updates/`). Tested with a mocked plugin by `node tests/appupdate.mjs`.
+Old and already-installed downloads are deleted at start-up. If a finished download is still waiting (for example, Android restarted the app after the settings screen), Settings shows **Install now** (with a small dot on the Settings button) instead of a second download. Without the native plugin (older APKs) or if the download fails, it falls back to the browser download link. The web app / iPhone shows *Update available — Reload* in Settings. Native code: `android/app/src/main/java/com/retropocket/app/AppUpdaterPlugin.java` (permission `REQUEST_INSTALL_PACKAGES`, FileProvider path `cache/updates/`). Tested with a mocked plugin by `node tests/appupdate.mjs`.
 4. Before any future uninstall/reinstall (or moving to another phone): **Settings → 💾 Backup & restore → Export backup** (games, states, cover art, BIOS, settings in one ZIP) and import it afterwards. (Some Android app WebViews cannot save downloaded files; if the export does not produce a file, use the web app in Chrome for the backup.)
 
 Verified on two consecutive CI builds (1.0.15 → versionCode 1015, then the next one): identical signer certificate, higher versionCode.
@@ -105,7 +105,7 @@ Signing certificate of the stable key (SHA-256): `3D:22:72:23:FC:4D:C7:E5:6E:18:
 
 ### 🔄 Web app updates
 
-The service worker is **network-first** (online you always get the newest files; the cache is only the offline fallback) and a new version installs in the background and **waits**: you get *Update available — Reload* (and **Settings → Check for updates**) instead of half-old/half-new files. Every deployment is stamped with the commit count (`www/build-info.json`, `www/js/version.js`, service-worker `VERSION`). Tested by `node tests/update.mjs`.
+The service worker is **network-first** (online you always get the newest files; the cache is only the offline fallback) and a new version installs in the background and **waits**, so you never get half-old/half-new files. It is applied **silently the next time you open the app**. There are **no update banners on the main screen**; **Settings → 🔄 Check for updates** is the only place to look for updates. It says *You're up to date (version X)* or offers **Reload** (web) / **Update now** (APK). Before 1.0.29 an update banner could show on every launch, even on the current version (an already-applied service worker was reported as "waiting", mostly inside the APK). That is fixed. Every deployment is stamped with the commit count (`www/build-info.json`, `www/js/version.js`, service-worker `VERSION`). Tested by `node tests/update.mjs`.
 
 **Option B – PWA (no APK):** open the Pages URL above in **Chrome** → ⋮ menu → **Install app** / **Add to Home screen**.
 
@@ -300,7 +300,7 @@ Analog sticks can be moved but not resized.
 **Buttons at the top.** Phones with on-screen navigation buttons (and Android 15 edge-to-edge) could hide the bottom row, so every Close / Save / Done button is now at the **top**, inside the safe area:
 - EmulatorJS pop-ups (Control Settings, Cheats, Netplay…): the title and buttons come first and the content scrolls below. While a pop-up is open, our ☰ / quick buttons hide so they can't cover it.
 - Touch layout editor: **▴ Hide / Reset / Done** make up the first row. *Hide* collapses the panel so you can see the controls you're moving.
-- Settings, Performance, the game sheet and other dialogs have a sticky top bar with **Close** / **‹ Back**. Toasts and the update banner also show at the top.
+- Settings, Performance, the game sheet and other dialogs have a sticky top bar with **Close** / **‹ Back**. Toasts also show at the top.
 
 **Settings → ⚡ Performance & device…** shows:
 - the phone, chipset (Android 12+, from the APK's native plugin), Android version, RAM, CPU cores, GPU, WebGL2, screen and refresh rate;
@@ -381,6 +381,9 @@ Uses the browser **Gamepad API**, so Xbox, PlayStation (DualShock 4 / DualSense)
 * **Auto-detect:** a toast appears on connect/disconnect (library and in game); the first pads become Player 1, 2, 3, 4 in connection order. The on-screen touch pad is **hidden while a controller is connected**, comes back when you touch the screen (and hides again on the next controller input), and returns on disconnect.
 * **Settings → 🎮 Controllers…** (not an About tab): connected pads with a live input readout, per-pad **player assignment** (Auto / Player 1–4 / Off), **button layout** (*Nintendo positions*: right = A, bottom = B — or *Xbox labels*), **stick deadzone**, left-stick-as-D-pad, hide-touch-pad, hotkeys on/off, **keyboard** controls for desktop with a preset, and a **per-player remap table** (tap a control, then press the pad button / key you want; "Reset" per player). Mappings are stored in `localStorage` (`rp.pad`) and applied to EmulatorJS (`EJS_defaultControls` + re-applied after start) for **every system**, all four players. Player counts follow each system (table above, `players` in `www/js/cores.js`: e.g. 4 for N64 and arcade, 2 for NES/SNES/Genesis/PS1, 1 for handhelds); extra controllers are ignored by one-player systems.
 * **Analog sticks / triggers:** a deadzone (radial) is applied to the sticks before EmulatorJS sees them. NES/GB/GBA/SNES/DS are digital, so the left stick acts as a D-pad (and "hat" D-pads that browsers expose as an axis are decoded); analog triggers act as L2/R2 buttons. On the analog systems (**N64, PlayStation, PSP**; `analog: true` in `cores.js`) both sticks are passed through unmodified apart from the deadzone: the left stick is the analog stick (N64/PSP/PS1 analog mode), the right stick is the N64 C-buttons, **L2/R2** are the PS1/PSP triggers and **Z** on N64, L3/R3 are the stick clicks. Arcade/Neo Geo: **Select = Coin**, **Start = Start** (hold Select+Start still opens the app menu). Per-system hints are shown in the pause menu.
+* **Analog sticks are remappable with direction** (N64 / PlayStation / PSP): the remap table has rows *Left stick → right / ← left / ↑ up / ↓ down* and the same for the right stick (N64 C-buttons). Tap a row and push the stick the way you want; the direction is stored (e.g. `LEFT_STICK_X:+1`), so a pad whose stick reports backwards can be fixed by remapping or with *Invert stick X / Y*. Since 1.0.29 every pad input goes through one Retro Pocket path (`www/js/padinput.js`). It honours the direction and invert settings and sends analog values proportionally to the core.
+* **In-game Control Settings** (EmulatorJS menu) changes apply immediately and are saved **per game** on top of your Controllers mappings (`rp.pad.game.<id>`). Changes in Settings → Controllers apply to a running game straight away.
+* **🧪 Test controller** (Controllers screen): live raw axes and buttons with what each one is mapped to, plus the pad's `id` and `mapping` (also written to the browser console as `[Retro Pocket] controller …`). Menu navigation is paused while testing. Stop with the button or **Select + Start**.
 * **In game hotkeys:** hold **Select + Start** (or press the **Guide/Home** button) for the pause menu (Resume, Save state, Load state, Restart, Sound, Fast-forward, Screenshot, Exit… — the same menu as the top ☰ button); **Select + R1** quick-save, **Select + L1** quick-load. While Select is held, Start/L1/R1 are not sent to the game. Turn this off in the Controllers screen if a game needs those combos.
 * **Library with a controller:** D-pad / left stick moves between games and menu items, **A** opens (Nintendo layout: right button; Xbox layout: bottom button), **B** goes back/closes, **Start** opens the game's options, **Select** opens Settings, **L1/R1** switch the system filter.
 * **Desktop keyboard defaults (Retro Pocket preset):** arrows = D-pad, **X** = A, **Z** = B, **S** = X, **A** = Y, **Q/W** = L/R, **Enter** = Start, **Backspace** = Select, **F5/F9** quick save/load. Remappable.
@@ -408,6 +411,7 @@ node tests/padsys.mjs     # per-system controller wiring unit tests (no browser)
 node tests/library.mjs    # picker, cue/bin bundling, BIOS upload -> emulator FS (headless Chrome)
 node tests/bios.mjs       # BIOS dialog: dropdown, open-file downloads (mocked fetch), IndexedDB, delivery
 node tests/update.mjs     # service-worker updates (no stale files, banner, offline), APK update prompt, backup/restore
+node tests/gamepad.mjs    # one input path: stick direction at core level, invert, remaps (Controllers + in-game, per game), Test controller
 node tests/appupdate.mjs  # in-app APK update flow with a mocked native plugin (progress, cancel, permission, verification, fallbacks)
 node tests/ingame.mjs     # in-game ☰ menu, no bottom bar pop-up (headless Chrome, touch/mouse)
 node tests/dstouch.mjs    # DS touchscreen: probe ROM, both cores, synthetic touch/mouse (headless Chrome)
@@ -440,8 +444,8 @@ www/                      the whole app (static; served by Pages and bundled int
   js/detect.js            content sniffing, ZIP reader/writer, cue/m3u parsing   js/bios.js, js/biosui.js, js/biosdata.js, js/hash.js  BIOS storage, dialog, open-file table, md5
   bios-open/              the only BIOS-type files in the repo: open-licensed, with licences/
   js/art.js               automatic box art (libretro)        js/cover.js  “Change cover” picker
-  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog   js/ingameui.js  ☰ button settings   js/updates.js  update checks/banner   js/backup.js  export/import backup   js/version.js  stamped build number
-  js/pads.js  gamepad settings/shim/control maps   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
+  js/dstouch.js  DS touchscreen (overlay, stylus mapping, layouts)   js/dsui.js  DS settings dialog   js/ingameui.js  ☰ button settings   js/updates.js  Settings update check   js/backup.js  export/import backup   js/version.js  stamped build number
+  js/pads.js  gamepad settings/shim/control maps   js/padinput.js  single gamepad→core input path   js/padnav.js  controller menu navigation   js/padsui.js  Settings → Controllers
   sw.js                   offline shell + CDN runtime cache   manifest.webmanifest, icons/
 android/                  Capacitor Android project (generated by `cap add android`, committed)
 capacitor.config.json     appId com.retropocket.app, webDir = www

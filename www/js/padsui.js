@@ -1,6 +1,29 @@
 // Settings > Controllers: connected pads, player assignment, options (deadzone, layout, ...) and per-player button remapping.
-import { CONTROLS, PAD_DEFAULTS, KB_DEFAULTS, loadPad, savePad, rawPads, padName, padKey, prettyPad, captureNextInput, keyName, PAD_LABELS, PRETTY, assignPlayers, ANALOG_SYSTEMS } from './pads.js';
+import { CONTROLS, STICK_CONTROLS, CONTROL_NAMES, AXIS_NAMES, PAD_DEFAULTS, KB_DEFAULTS, loadPad, savePad, rawPads, padName, padKey, prettyPad, captureNextInput, keyName, PAD_LABELS, PRETTY, assignPlayers, ANALOG_SYSTEMS } from './pads.js';
 import { SYSTEMS } from './cores.js';
+import { axisBinding } from './padinput.js';
+
+/** What a raw pad input is bound to: names of the controls whose binding matches (direction-aware for axes). */
+export function boundTo(effectivePad, label) {
+  const ax = axisBinding(label), out = [];
+  for (const [i, name] of Object.entries(CONTROL_NAMES)) {
+    const b = effectivePad(Number(i)); if (!b) continue;
+    if (ax) { const bb = axisBinding(b); if (bb && bb.axis === ax.axis && bb.dir === ax.dir) out.push(name); }
+    else if (b === label) out.push(name);
+  }
+  return out;
+}
+/** One line per raw axis / pressed button for the "Test controller" view. */
+export function describePad(g, effectivePad) {
+  const axes = Array.from(g.axes || []).map((v, a) => {
+    const name = AXIS_NAMES[a] || `EXTRA_STICK_${a}`, dir = v > 0 ? '+1' : '-1';
+    const to = Math.abs(v) > 0.3 ? boundTo(effectivePad, `${name}:${dir}`) : [];
+    return { a, name, v, to };
+  });
+  const buttons = Array.from(g.buttons || []).map((b, i) => ({ i, label: PAD_LABELS[i] || `GAMEPAD_${i}`, pressed: !!(b && (b.pressed || b.value > 0.5)), value: b ? b.value : 0 }))
+    .filter((b) => b.pressed).map((b) => ({ ...b, to: boundTo(effectivePad, b.label) }));
+  return { id: g.id, index: g.index, mapping: g.mapping || '', axes, buttons };
+}
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, props = {}, ...kids) => {
@@ -14,7 +37,7 @@ export function openControllers() {
   let cfg = loadPad(), player = 0, timer = 0, capAbort = null;
   const save = () => savePad(cfg);
   const close = el('button', { className: 'btn ghost', type: 'button', textContent: 'Close', onclick: () => dlg.close() });
-  dlg.onclose = () => { clearInterval(timer); if (capAbort) capAbort.abort(); window.__rpCapturing = false; };
+  dlg.onclose = () => { clearInterval(timer); window.__rpPadTest = false; if (capAbort) capAbort.abort(); window.__rpCapturing = false; };
 
   /* connected list */
   const list = el('div', { id: 'pad-list', className: 'pad-list' });
@@ -46,6 +69,34 @@ export function openControllers() {
       const pressed = g.buttons.map((b, i) => (b.pressed ? prettyPad(PAD_LABELS[i] || 'GAMEPAD_' + i) : null)).filter(Boolean);
       live.textContent = `Pressed: ${pressed.join(', ') || 'nothing'} · L stick ${(g.axes[0] || 0).toFixed(2)}, ${(g.axes[1] || 0).toFixed(2)} · R stick ${(g.axes[2] || 0).toFixed(2)}, ${(g.axes[3] || 0).toFixed(2)}`;
     }
+  }
+
+  /* live "Test controller" view: raw axes / buttons and what each one is bound to (for the selected player tab) */
+  const test = el('div', { id: 'pad-test', className: 'pad-test', hidden: true });
+  const testBtn = el('button', { className: 'btn', type: 'button', id: 'pad-test-btn', textContent: '🎮 Test controller', onclick: () => {
+    setTest(test.hidden);
+    if (!test.hidden) for (const g of rawPads()) console.info('[Retro Pocket] controller', JSON.stringify({ id: g.id, index: g.index, mapping: g.mapping || '(non-standard)', axes: g.axes.length, buttons: g.buttons.length }));
+  } });
+  // while testing, controller presses don't navigate the menu; Select + Start together (or this button) stops the test
+  function setTest(on) { test.hidden = !on; window.__rpPadTest = on; testBtn.textContent = on ? '■ Stop test (or Select + Start)' : '🎮 Test controller'; }
+  const fmt = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+  function paintTest() {
+    if (test.hidden) return;
+    const pads = rawPads(); const effPad = (i) => effective(player, i).pad;
+    if (pads.some((g) => g.buttons[8] && g.buttons[8].pressed && g.buttons[9] && g.buttons[9].pressed)) { setTest(false); return; }
+    if (!pads.length) { test.textContent = 'No controller yet — press any button on it.'; return; }
+    test.replaceChildren(...pads.map((g) => {
+      const d = describePad(g, effPad);
+      return el('div', { className: 'pad-test-item', dataset: { index: g.index } },
+        el('div', { className: 'pad-name', textContent: `${padName(d.id)} → testing as Player ${player + 1}` }),
+        el('div', { className: 'muted small pad-test-id', textContent: `id: ${d.id} · mapping: ${d.mapping || 'non-standard (axes may be in an unusual order — remap below)'}` }),
+        ...d.axes.map((x) => el('div', { className: 'pad-axis', dataset: { axis: x.a } },
+          el('span', { textContent: `Axis ${x.a} ${x.name.replace(/_/g, ' ').toLowerCase()}` }),
+          el('span', { className: 'bar' }, el('i', { style: `left:${50 + Math.max(-1, Math.min(1, x.v)) * 50}%` })),
+          el('span', { className: 'val', textContent: fmt(x.v) }),
+          el('span', { className: 'to', textContent: x.to.length ? '→ ' + x.to.join(', ') : '' }))),
+        el('div', { className: 'pad-btns small', textContent: 'Buttons: ' + (d.buttons.map((b) => `${b.i} ${prettyPad(b.label)}${b.to.length ? ' → ' + b.to.join(', ') : ' (unbound)'}`).join(' · ') || 'none pressed') }));
+    }));
   }
 
   /* options */
@@ -88,7 +139,8 @@ export function openControllers() {
   const setOv = (p, i, patch) => { cfg.map[p] = cfg.map[p] || {}; cfg.map[p][i] = { ...(cfg.map[p][i] || {}), ...patch }; save(); paintMap(); };
   function paintMap() {
     table.replaceChildren(el('div', { className: 'map-head' }, el('span', { textContent: 'Control' }), el('span', { textContent: 'Controller' }), el('span', { textContent: player === 0 ? 'Keyboard' : '' })));
-    for (const c of CONTROLS) {
+    for (const c of [...CONTROLS, { head: 'Analog sticks (N64 / PlayStation / PSP)' }, ...STICK_CONTROLS]) {
+      if (c.head) { table.append(el('div', { className: 'map-sub muted small', textContent: c.head + ' — push the stick in the direction you want; direction counts.' })); continue; }
       const e = effective(player, c.i);
       const padBtn = el('button', { className: 'btn map-pad', type: 'button', textContent: prettyPad(e.pad), dataset: { i: c.i } });
       padBtn.onclick = async () => {
@@ -117,13 +169,13 @@ export function openControllers() {
   const help = el('div', { className: 'muted small' },
     el('p', { textContent: 'In a game: hold Select + Start (or press the Guide/Home button) for the pause menu · Select + R1 quick-save · Select + L1 quick-load. Press any controller button after connecting to wake it up.' }),
     el('p', { textContent: 'In the library: D-pad / left stick moves, A opens a game, B goes back, Start opens the game options, Select opens Settings, L1/R1 switch the system filter.' }),
-    el('p', { textContent: 'Mappings apply to every system. Analog stick axes (N64/PS1/PSP-style cores) are passed through with your deadzone; for NES, Game Boy, GBA, SNES and DS the left stick acts as a D-pad. Triggers are treated as digital L2/R2 buttons.' }));
+    el('p', { textContent: 'Mappings apply to every system. Changes made in a game\'s own Control Settings are kept for that game. Analog stick axes (N64/PS1/PSP-style cores) are passed through with your deadzone — if a stick goes the wrong way, use Invert above or remap its directions; for NES, Game Boy, GBA, SNES and DS the left stick acts as a D-pad. Triggers are treated as digital L2/R2 buttons.' }));
 
   dlg.append(el('div', { className: 'cv-main' },
     el('div', { className: 'cv-head' }, el('h3', { textContent: 'Controllers' }), close),
-    el('h4', { textContent: 'Connected' }), list,
+    el('h4', { textContent: 'Connected' }), list, testBtn, test,
     el('h4', { textContent: 'Options' }), opts,
     el('h4', { textContent: 'Button mapping' }), tabs, table, help));
-  paintTabs(); paintMap(); paintList(); timer = setInterval(paintList, 150);
+  paintTabs(); paintMap(); paintList(); timer = setInterval(() => { paintList(); paintTest(); }, 150);
   dlg.showModal();
 }

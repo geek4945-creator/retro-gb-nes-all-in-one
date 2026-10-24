@@ -9,7 +9,7 @@
     "icons": "python3 scripts/make-icons.py",
     "check": "node scripts/check.mjs",
     "test": "node tests/e2e.mjs",
-    "test:all": "node tests/detect.mjs && node tests/hash.mjs && node tests/padsys.mjs && node tests/e2e.mjs && node tests/pads.mjs && node tests/crash.mjs && node tests/ds.mjs && node tests/ingame.mjs && node tests/update.mjs && node tests/dstouch.mjs && node tests/cover.mjs && node tests/library.mjs && node tests/bios.mjs && node tests/threads.mjs && node tests/folders.mjs && node tests/netplay.mjs && node tests/cloud.mjs && node tests/ra.mjs && node tests/cheats.mjs && node tests/organize.mjs && node tests/touchlayout.mjs && node tests/video.mjs && node tests/appupdate.mjs && node tests/topbar.mjs && node tests/startpad.mjs && node tests/n64stick.mjs && node tests/perf.mjs",
+    "test:all": "node tests/detect.mjs && node tests/hash.mjs && node tests/padsys.mjs && node tests/e2e.mjs && node tests/pads.mjs && node tests/crash.mjs && node tests/ds.mjs && node tests/ingame.mjs && node tests/update.mjs && node tests/dstouch.mjs && node tests/cover.mjs && node tests/library.mjs && node tests/bios.mjs && node tests/threads.mjs && node tests/folders.mjs && node tests/netplay.mjs && node tests/cloud.mjs && node tests/ra.mjs && node tests/cheats.mjs && node tests/organize.mjs && node tests/touchlayout.mjs && node tests/video.mjs && node tests/appupdate.mjs && node tests/topbar.mjs && node tests/startpad.mjs && node tests/n64stick.mjs && node tests/perf.mjs && node tests/gamepad.mjs",
     "test:ds-touch": "node tests/dstouch.mjs",
     "test:ingame": "node tests/ingame.mjs",
     "test:update": "node tests/update.mjs",
@@ -30,7 +30,8 @@
     "test:topbar": "node tests/topbar.mjs",
     "test:startpad": "node tests/startpad.mjs",
     "test:n64stick": "node tests/n64stick.mjs",
-    "test:perf": "node tests/perf.mjs"
+    "test:perf": "node tests/perf.mjs",
+    "test:gamepad": "node tests/gamepad.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",

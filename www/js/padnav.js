@@ -35,7 +35,7 @@ export function startPadNav({ getFocusables, onBack, onStart, onSelect, onL, onR
 
   function tick() {
     raf = requestAnimationFrame(tick);
-    if (!enabled() || window.__rpCapturing) return;
+    if (!enabled() || window.__rpCapturing || window.__rpPadTest) return;   // capturing a binding / Test controller running
     const pads = rawPads(); if (!pads.length) return;
     const now = performance.now(); let dir = '', edge = {};
     for (const g of pads) {

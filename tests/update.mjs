@@ -1,6 +1,8 @@
 // Updates + backup, headless Chrome, no CDN needed: a COPY of www is served and re-"deployed" with a higher build number to check that
-// (1) the service worker never serves stale files while online, (2) a newer build shows "Update available — Reload" and Reload really switches
-// to the new version, (3) offline still works, (4) the APK variant offers the APK download instead, (5) backup export -> wipe -> import restores
+// (1) the service worker never serves stale files while online, (2) NOTHING is ever shown automatically on the main screen (no banner on launch,
+// none for a waiting worker), (3) Settings → Check for updates says "You're up to date (version X)" when current and offers Reload when newer,
+// and Reload really switches, (4) a worker left waiting is applied silently on the next launch, (5) offline still works, (6) the APK variant
+// offers the APK download inside Settings (and a stale waiting worker / versionCode vs build never causes a false "update"), (5) backup export -> wipe -> import restores
 // games / states / art / BIOS byte-for-byte and settings (but never the API keys).
 import puppeteer from 'puppeteer-core';
 import { execFileSync, spawn } from 'node:child_process';
@@ -23,15 +25,21 @@ try {
   const errs = []; page.on('pageerror', (e) => errs.push(e.message)); if (process.env.DEBUG) page.on('console', (m) => console.log('  [page]', m.text()));
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const sw = () => page.evaluate(() => new Promise(async (res) => { const reg = await navigator.serviceWorker.getRegistration(); const w = reg && reg.active; if (!w) return res(null); navigator.serviceWorker.addEventListener('message', (e) => e.data && e.data.type === 'version' && res(e.data.version)); w.postMessage('get-version'); setTimeout(() => res('timeout'), 3000); }));
-  const openSettings = async () => { await page.click('#btn-settings'); await page.waitForSelector('#btn-update'); };
+  const openSettings = async () => { await page.click('#btn-settings'); await page.waitForSelector('#settings[open] #btn-update'); await sleep(200); };
   await page.goto(base + 'index.html', { waitUntil: 'networkidle0' });
   await page.evaluate(() => navigator.serviceWorker.ready); await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
 
   await step('build 100 is running: the service worker has the stamped version and the Settings button shows the version', async () => {
     assert(await sw() === 'b100', 'sw version ' + await sw()); await openSettings(); const t = await page.$eval('#btn-update', (e) => e.textContent); assert(/1\.0\.100/.test(t), t);
   });
-  await step('Check for updates: when current it says "up to date" and no banner appears', async () => {
-    await page.click('#btn-update'); await page.waitForFunction(() => /up to date/.test(document.getElementById('toast').textContent), { timeout: 8000 }); assert(!(await page.$('#update-banner:not([hidden])')), 'no banner');
+  const noBanner = async (p = page) => { const r = await p.evaluate(() => ({ old: !!document.getElementById('update-banner'), outside: [...document.querySelectorAll('body *')].some((e) => e.checkVisibility && e.checkVisibility() && !e.closest('dialog') && /update available|new app version|new version|update now/i.test(e.textContent) && !e.children.length) })); assert(!r.old && !r.outside, 'automatic update prompt on the main screen ' + JSON.stringify(r)); };
+  await step('Check for updates: when current it says "You\'re up to date (version 1.0.100)" in Settings and no banner appears', async () => {
+    await page.click('#btn-update'); await page.waitForFunction(() => /You're up to date \(version 1\.0\.100\)/.test(document.getElementById('toast').textContent), { timeout: 8000 });
+    const t = await page.$eval('#settings #update-panel', (e) => e.textContent); assert(/You're up to date \(version 1\.0\.100\)/.test(t), t); await noBanner();
+  });
+  await step('version compare: build 28 vs APK versionCode 1028 / "1.0.28" is NOT newer; a dev build (0) never claims an update', async () => {
+    const r = await page.evaluate(async () => { const u = await import('./js/updates.js'); return [u.isNewer({ build: 28 }, 1028), u.isNewer({ build: 28 }, 28), u.isNewer({ build: 29 }, 28), u.isNewer({ build: 29 }, 1028), u.isNewer({ build: 29 }, 0), u.isNewer({ build: 1029 }, 28), u.buildOf('1.0.28')]; });
+    assert(JSON.stringify(r) === '[false,false,true,true,false,true,28]', JSON.stringify(r));
   });
   // ---- "deploy" build 101 (+ a changed stylesheet) ----
   stamp(101); appendFileSync(join(www, 'css/app.css'), '\n/* build-101-marker */\n');
@@ -39,32 +47,64 @@ try {
     const t = await page.evaluate(async () => (await fetch('css/app.css')).text()); assert(t.includes('build-101-marker'), 'stale css served');
     assert(await sw() === 'b100', 'old worker still active until the user reloads');
   });
-  await step('Check for updates after a deployment: banner "Update available — Reload", a worker is waiting (not auto-activated)', async () => {
-    await page.click('#btn-update'); await page.waitForFunction(() => /Update available/.test(document.getElementById('toast').textContent), { timeout: 15000 });
-    await page.waitForSelector('#update-banner:not([hidden])'); const txt = await page.$eval('#update-banner', (e) => e.textContent); assert(/1\.0\.101/.test(txt) || /ready/.test(txt), txt);
+  await step('a new worker installs and WAITS in the background, and still nothing is shown on the main screen', async () => {
+    await page.keyboard.press('Escape'); await sleep(300);
+    await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
     await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting, { timeout: 15000 }).catch(() => { throw new Error('waiting worker'); });
-    await page.screenshot({ path: 'tests/out/update-banner.png' });
+    await sleep(3500); await noBanner(); assert(!(await page.$eval('#btn-settings', (e) => e.classList.contains('has-update'))), 'no dot without a manual check');
+  });
+  await step('Settings → Check for updates after a deployment: "Update available (version 1.0.101)" + Reload inside Settings', async () => {
+    await openSettings(); await page.click('#btn-update'); await page.waitForFunction(() => /Update available/.test(document.getElementById('toast').textContent), { timeout: 15000 });
+    const txt = await page.$eval('#settings #update-panel', (e) => e.textContent); assert(/1\.0\.101/.test(txt) && /Reload/.test(txt), txt);
+    await page.screenshot({ path: 'tests/out/update-panel.png' });
   });
   await step('Reload applies the update: the new worker (b101) takes over and the page reloads once on the new build', async () => {
-    await page.keyboard.press('Escape'); await sleep(300);
     const nav = page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 }).catch(() => null);
     await page.click('#update-go'); await nav; await sleep(1500);
-    if (process.env.DEBUG) console.log(await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return JSON.stringify({ a: r.active && r.active.state, w: r.waiting && r.waiting.state, i: r.installing && r.installing.state, ctrl: !!navigator.serviceWorker.controller, url: location.href }); }));
-    assert(await sw() === 'b101', 'sw ' + await sw()); await openSettings(); assert(/1\.0\.101/.test(await page.$eval('#btn-update', (e) => e.textContent)), 'ui version'); assert(!(await page.$('#update-banner:not([hidden])')), 'banner gone');
+    assert(await sw() === 'b101', 'sw ' + await sw()); await noBanner(); await openSettings(); assert(/1\.0\.101/.test(await page.$eval('#btn-update', (e) => e.textContent)), 'ui version');
     await page.click('#btn-update'); await page.waitForFunction(() => /up to date/.test(document.getElementById('toast').textContent), { timeout: 8000 });
+  });
+  // ---- "deploy" 102 while the app is open, then the user closes and opens it again ----
+  stamp(102);
+  await step('next launch: a worker left waiting from the last session is applied silently (no prompt) and Settings says up to date (1.0.102)', async () => {
+    await page.keyboard.press('Escape'); await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+    await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting, { timeout: 15000 }).catch(() => { throw new Error('waiting worker'); });
+    await page.evaluate(() => sessionStorage.clear());
+    await page.reload({ waitUntil: 'networkidle0' });
+    const applied = await page.waitForFunction(async () => { const r = await navigator.serviceWorker.getRegistration(); return !r.waiting; }, { timeout: 15000 }).then(() => true, () => false);
+    if (!applied) {   // headless Chrome sometimes holds activation while the old worker still counts the page as in use: a real "next launch" (all windows closed) always activates it
+      console.log('  note: skip-waiting on reload was held by Chrome; closing the app window and relaunching');
+      await page.goto('about:blank'); await sleep(1500); await page.goto(base + 'index.html', { waitUntil: 'networkidle0' });
+      await page.waitForFunction(async () => { const r = await navigator.serviceWorker.getRegistration(); return r && !r.waiting && r.active; }, { timeout: 15000 });
+    }
+    await sleep(2500);
+    assert(await sw() === 'b102', 'sw ' + await sw()); await noBanner();
+    await openSettings(); assert(/1\.0\.102/.test(await page.$eval('#btn-update', (e) => e.textContent)), 'ui version');
+    await page.click('#btn-update'); await page.waitForFunction(() => /You're up to date \(version 1\.0\.102\)/.test(document.getElementById('toast').textContent), { timeout: 8000 });
   });
   await step('offline: the app shell still opens from the cache (airplane mode)', async () => {
     await page.keyboard.press('Escape'); await page.setOfflineMode(true); await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForSelector('#btn-settings', { timeout: 8000 });
     assert((await page.title()).length > 0, 'title'); await page.setOfflineMode(false);
   });
-  await step('Android APK: a newer build offers "Download APK" (bundled web files cannot self-update)', async () => {
+  await step('Android APK: no automatic prompt on launch; Settings → Check for updates offers "Download APK" for a newer build', async () => {
     const p2 = await (await browser.createBrowserContext()).newPage(); await p2.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
     await p2.evaluateOnNewDocument(() => { window.Capacitor = { isNativePlatform: () => true }; });
     await (await p2.createCDPSession()).send('Network.setBypassServiceWorker', { bypass: true });
     await p2.setRequestInterception(true);
     p2.on('request', (r) => { const u = r.url(); if (u.startsWith('https://geek4945-creator.github.io/')) r.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: readBuild() }); else r.continue(); });
-    await p2.goto(base + 'index.html', { waitUntil: 'domcontentloaded' });
-    await p2.waitForSelector('#update-banner:not([hidden])', { timeout: 15000 }); const t = await p2.$eval('#update-banner', (e) => e.textContent); assert(/Download APK/.test(t) && /1\.0\.103/.test(t), t); await p2.close();
+    await p2.goto(base + 'index.html', { waitUntil: 'networkidle0' }); await sleep(4000); await noBanner(p2);
+    await p2.click('#btn-settings'); await p2.waitForSelector('#btn-update'); await p2.click('#btn-update');
+    await p2.waitForFunction(() => { const e = document.querySelector('#settings #update-panel'); return e && /Download APK/.test(e.textContent); }, { timeout: 15000 });
+    const t = await p2.$eval('#update-panel', (e) => e.textContent); assert(/Download APK/.test(t) && /1\.0\.103/.test(t), t); await p2.close();
+  });
+  await step('Android APK on the CURRENT version (APK 1.0.102 = Pages build 102): launch shows nothing, check says up to date', async () => {
+    const p3 = await (await browser.createBrowserContext()).newPage(); await p3.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    await p3.evaluateOnNewDocument(() => { window.Capacitor = { isNativePlatform: () => true }; });
+    await p3.setRequestInterception(true);
+    p3.on('request', (r) => { const u = r.url(); if (u.startsWith('https://geek4945-creator.github.io/')) r.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ build: 102, version: '1.0.102', sha: 'x', date: '' }) }); else r.continue(); });
+    await p3.goto(base + 'index.html', { waitUntil: 'networkidle0' }); await sleep(4000); await noBanner(p3);
+    await p3.click('#btn-settings'); await p3.waitForSelector('#btn-update'); await p3.click('#btn-update');
+    await p3.waitForFunction(() => /You're up to date \(version 1\.0\.102\)/.test(document.getElementById('toast').textContent), { timeout: 8000 }); await p3.close();
   });
   function readBuild() { return JSON.stringify({ build: 103, version: '1.0.103', sha: 'abc', date: '' }); }
 

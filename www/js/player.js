@@ -10,7 +10,8 @@ import { FILTERS, loadFilter, saveFilter, nextFilter, applyFilter, loadRewind, s
 import { loadPerf, savePerf, effectivePreset, presetOptions, reconcileSaved, autoTier, deviceInfo, PRESETS } from './perf.js';
 let playTracker = null;
 import { buildBios } from './bios.js';
-import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS, swallow } from './pads.js';
+import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS, swallow, loadGameMap, saveGameMap, diffControls } from './pads.js';
+import { takeOverGamepad } from './padinput.js';
 import { trackAudio, initStartButton, resumeAllAudio, audioBlocked } from './startgame.js';
 import { patchNipple, wrapSimulateInput, loadInvert } from './stick.js';
 import { loadUi, saveUi, UI_POS } from './ingameui.js';
@@ -143,10 +144,20 @@ new MutationObserver(() => document.body.classList.toggle('rp-popup', [...docume
 const ptoast = (msg) => { const t = $('#ptoast'); t.textContent = msg; t.hidden = false; clearTimeout(ptoast.t); ptoast.t = setTimeout(() => (t.hidden = true), 2600); };
 let padSig = '', touchOverride = false;
 
-function applyControls() {          // our Controllers settings win over EmulatorJS' per-game saved controls
+// Controls = Settings → Controllers (global) + this game's changes from the in-game EmulatorJS "Control Settings".
+// EmulatorJS saves its whole controls object per game; we used to overwrite it on every launch, which silently threw away
+// in-game remaps. Now whatever the user changes in that popup is diffed against our global map and stored as a per-game
+// override (rp.pad.game.<id>), applied on top of the global map on every launch.
+let globalControls = null;
+function applyControls() {
   const e = emu(); if (!e || !e.controls) return;
-  e.controls = JSON.parse(JSON.stringify(buildControls(loadPad())));
+  globalControls = buildControls(loadPad());
+  e.controls = JSON.parse(JSON.stringify(buildControls(loadPad(), loadGameMap(rom && rom.id))));
   try { e.setupKeys(); e.checkGamepadInputs(); } catch (x) { console.warn('applyControls', x); }
+  if (!e.__rpSaveHook && typeof e.saveSettings === 'function') {
+    const save = e.saveSettings.bind(e); e.__rpSaveHook = true;
+    e.saveSettings = (...a) => { try { if (globalControls && rom) saveGameMap(rom.id, diffControls(globalControls, e.controls, (k) => parseInt(e.keyLookup(k)))); } catch (x) { console.warn('control remap save', x); } return save(...a); };
+  }
 }
 function syncPads({ announce = true } = {}) {
   const cfg = loadPad(), pads = rawPads(), e = emu();
@@ -173,6 +184,7 @@ function updateTouchPad() {         // hide the on-screen pad while a controller
 }
 addEventListener('pointerdown', (ev) => { if (ev.pointerType === 'touch' && rawPads().length && !touchOverride) { touchOverride = true; updateTouchPad(); } }, { passive: true });
 addEventListener('gamepadconnected', () => syncPads());
+addEventListener('storage', (ev) => { if (started && ev.key === 'rp.pad') applyControls(); });   // Controllers changed in another window: apply now
 addEventListener('gamepaddisconnected', () => setTimeout(syncPads, 0));
 setInterval(() => syncPads(), 700);
 
@@ -377,8 +389,8 @@ requestAnimationFrame(hotkeys);
   }
   window.EJS_ready = () => { status.hidden = true; try { emu().rewindEnabled = !HARDCORE && loadRewind(rom.system); } catch {} };   // read by the GameManager when the game starts
   window.EJS_shaders = RP_SHADERS;   // our LCD grid next to EmulatorJS' built-in shaders
-  window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; try { let inv = loadInvert(rom.system); addEventListener('storage', () => { inv = loadInvert(rom.system); }); wrapSimulateInput(emu().gameManager, () => inv); } catch (e) { console.warn('stick invert', e); } if (window.__rpStartedBy === 'pad') setTimeout(() => { if (audioBlocked()) ptoast('🔇 Tap the screen once to turn the sound on'); }, 900); try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } startFilter(emu(), rom.system, rom.id); quick.show(loadQuick()); }, 50); };
+  window.EJS_defaultControls = buildControls(loadPad(), loadGameMap(rom.id));
+  window.EJS_onGameStart = () => { started = true; try { let inv = loadInvert(rom.system); addEventListener('storage', () => { inv = loadInvert(rom.system); }); wrapSimulateInput(emu().gameManager, () => inv); takeOverGamepad(emu()); } catch (e) { console.warn('stick invert', e); } if (window.__rpStartedBy === 'pad') setTimeout(() => { if (audioBlocked()) ptoast('🔇 Tap the screen once to turn the sound on'); }, 900); try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } startFilter(emu(), rom.system, rom.id); quick.show(loadQuick()); }, 50); };
 
   // Graphics preset (Settings → Performance & device; per-game choice in the game sheet wins; see perf.js)
   try {

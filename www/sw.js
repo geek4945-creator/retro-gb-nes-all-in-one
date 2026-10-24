@@ -5,17 +5,17 @@ const RUNTIME = 'retro-pocket-ejs-v3';      // the EmulatorJS cores cache is ver
 const SHELL_FILES = [
   './', 'index.html', 'player.html', 'join.html', 'manifest.webmanifest',
   'css/app.css', 'css/player.css', 'css/join.css', 'vendor/peerjs.min.js',
-  'js/app.js', 'js/art.js', 'js/cover.js', 'js/pads.js', 'js/padnav.js', 'js/padsui.js', 'js/cores.js', 'js/db.js', 'js/player.js', 'js/detect.js', 'js/bios.js', 'js/biosui.js', 'js/biosdata.js', 'js/hash.js', 'js/dstouch.js', 'js/dsui.js', 'js/ingameui.js', 'js/updates.js', 'js/backup.js', 'js/folders.js', 'js/foldersui.js', 'js/netcfg.js', 'js/netplay.js', 'js/cloud.js', 'js/retroach.js', 'js/cheats.js', 'js/meta.js', 'js/touchlayout.js', 'js/video.js', 'js/join.js', 'js/version.js',
+  'js/app.js', 'js/art.js', 'js/cover.js', 'js/pads.js', 'js/padnav.js', 'js/padsui.js', 'js/cores.js', 'js/db.js', 'js/player.js', 'js/detect.js', 'js/bios.js', 'js/biosui.js', 'js/biosdata.js', 'js/hash.js', 'js/dstouch.js', 'js/dsui.js', 'js/ingameui.js', 'js/updates.js', 'js/backup.js', 'js/folders.js', 'js/foldersui.js', 'js/netcfg.js', 'js/netplay.js', 'js/cloud.js', 'js/retroach.js', 'js/cheats.js', 'js/meta.js', 'js/touchlayout.js', 'js/video.js', 'js/join.js', 'js/version.js', 'js/padinput.js', 'js/perf.js', 'js/perfui.js', 'js/startgame.js', 'js/stick.js', 'js/topbar.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
 ];
 
-// A new worker installs in the background and WAITS (no automatic skipWaiting): the page shows "Update available — Reload"
-// and asks it to take over, so a running game/library never gets half-old, half-new files. First install activates at once.
+// A new worker installs in the background and WAITS (no automatic skipWaiting): the app activates it silently on the next launch
+// (or Settings → Check for updates → Reload), so a running game/library never gets half-old, half-new files. First install activates at once.
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES.map((u) => new Request(u, { cache: 'reload' })))).then(() => { if (!self.registration.active) return self.skipWaiting(); }));
 });
 self.addEventListener('message', (e) => {
-  if (e.data === 'skip-waiting') self.skipWaiting();
+  if (e.data === 'skip-waiting') e.waitUntil(self.skipWaiting());   // waitUntil: the worker must not be stopped before activation is queued
   else if (e.data === 'get-version' && e.source) e.source.postMessage({ type: 'version', version: VERSION });
 });
 self.addEventListener('activate', (e) => {

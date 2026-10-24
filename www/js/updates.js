@@ -1,12 +1,17 @@
-// "Is there a newer version?" — for the installed web app (PWA) and the Android APK.
+// "Is there a newer version?" — for the installed web app (PWA) and the Android APK. ONLY answered in Settings → Check for updates:
+//   there is no automatic check and no banner on the main screen (1.0.29). Everything (status, Update now / Reload, APK download
+//   progress, "Install unknown apps", errors) is shown in a panel right below that Settings button (#update-panel).
 //   * BUILD (js/version.js, stamped in CI) is what THIS running code is; build-info.json (never cached) is what is deployed now.
-//   * PWA: a newer service worker installs in the background and waits; we show "Update available — Reload" and the Reload button
-//     tells the waiting worker to take over, then reloads (so a running session never mixes old and new files).
+//     Both are the commit count of the same commit (APK versionCode = 1000 + build), so "newer" means build-info.build > BUILD.
+//   * PWA: a newer service worker installs in the background and waits; it is activated silently on the NEXT launch (before
+//     the library is shown), or at once with "Reload" in Settings. A running session never mixes old and new files.
 //   * APK (Capacitor): the web files are bundled, so a newer build means a newer APK. "Update now" downloads it INSIDE the app with
 //     the native AppUpdater plugin (android/.../AppUpdaterPlugin.java): progress + cancel, then the plugin verifies the file (valid APK,
 //     same package, same signing certificate, higher versionCode) and opens the Android package installer. Android 8+ needs
 //     "Install unknown apps" for Retro Pocket once: we explain it, open that settings page and continue when the user comes back.
 //     No plugin (older APK) or a download error -> the old browser download link.
+//   Old false positive (fixed): the bundled service worker of the APK changes with every APK; after an update the new worker sat
+//   "waiting" forever (in the APK "Reload" meant "download the APK"), and every launch showed "Update available (version ready)".
 import { BUILD, VERSION } from './version.js';
 
 export const PAGES_URL = 'https://geek4945-creator.github.io/retro-gb-nes-all-in-one/';
@@ -21,16 +26,29 @@ export async function fetchLatest() {
   const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json(); if (!Number.isFinite(j.build)) throw new Error('bad build-info'); return j;
 }
+/** Build number from build-info / BUILD / a versionCode (1000 + build) / a "1.0.N" version. */
+export const buildOf = (x) => { const n = Number(x); if (Number.isFinite(n) && n > 0) return n >= 1000 ? n - 1000 : n; const m = /^1\.0\.(\d+)$/.exec(String(x || '')); return m ? Number(m[1]) : 0; };
+/** Is `latest` (build-info.json) newer than this running build? A dev checkout (BUILD 0) never claims an update. */
+export const isNewer = (latest, current = BUILD) => !!latest && buildOf(current) > 0 && buildOf(latest.build) > buildOf(current);
 
-function showBanner(text, actionLabel, action, extra = []) {
-  if (!bannerEl) { bannerEl = document.createElement('div'); bannerEl.id = 'update-banner'; bannerEl.setAttribute('role', 'status'); document.body.append(bannerEl); }
-  const msg = Object.assign(document.createElement('span'), { textContent: text });
-  const btns = actionLabel ? [Object.assign(document.createElement('button'), { id: 'update-go', textContent: actionLabel, onclick: action })] : [];
-  const x = Object.assign(document.createElement('button'), { className: 'ghost', textContent: '✕', ariaLabel: 'Dismiss', onclick: () => { bannerEl.hidden = true; } });
-  bannerEl.classList.remove('error');
-  bannerEl.replaceChildren(msg, ...extra, ...btns, x); bannerEl.hidden = false;
+/** The update panel shown below Settings → Check for updates (created once, keeps its state while Settings is closed). */
+export function updatePanel() {
+  if (!bannerEl) { bannerEl = document.createElement('div'); bannerEl.id = 'update-panel'; bannerEl.className = 'update-panel'; bannerEl.setAttribute('role', 'status'); bannerEl.hidden = true; }
   return bannerEl;
 }
+/** Optional little dot on the ⚙︎ Settings button while something needs attention (never a banner). */
+function dot(on) { const b = document.getElementById('btn-settings'); if (b) b.classList.toggle('has-update', !!on); }
+
+function showBanner(text, actionLabel, action, extra = []) {
+  const p = updatePanel();
+  const msg = Object.assign(document.createElement('span'), { textContent: text });
+  const btns = actionLabel ? [Object.assign(document.createElement('button'), { id: 'update-go', type: 'button', textContent: actionLabel, onclick: action })] : [];
+  p.classList.remove('error');
+  p.replaceChildren(msg, ...extra, ...btns); p.hidden = false;
+  dot(!!actionLabel || extra.length);
+  return p;
+}
+function showStatus(text) { const p = updatePanel(); p.classList.remove('error'); p.replaceChildren(Object.assign(document.createElement('span'), { textContent: text })); p.hidden = false; dot(false); }
 
 // ---------- APK: native in-app update (AppUpdater plugin) ----------
 const NATIVE = 'AppUpdater';
@@ -142,21 +160,38 @@ export async function applyUpdate() {
 
 function offerWeb(info) { showBanner(`Update available (version ${info.version}).`, 'Reload', applyUpdate); }
 
-/** manual = from the Settings button: returns a status line for the toast; automatic checks only show the banner when newer. */
-export async function checkForUpdates({ manual = false } = {}) {
+/** Settings → Check for updates. Returns the status line (also shown in the panel). Never called automatically. */
+export async function checkForUpdates({ manual = true } = {}) {
   let status = '';
+  if (downloading) return 'Downloading update…';
   try { if (reg) await reg.update(); } catch {}
   try {
     const latest = await fetchLatest();
-    if (latest.build > BUILD) {
+    if (isNewer(latest)) {
       if (isApk()) offerApk(latest); else offerWeb(latest);
       status = isApk() ? `New version ${latest.version} available — ${hasNativeUpdater() ? 'tap Update now' : 'download the APK'}` : `Update available: version ${latest.version}`;
-    } else status = BUILD ? `You are up to date (version ${VERSION})` : 'Development build (no version stamp)';
+    } else {
+      status = BUILD ? `You're up to date (version ${VERSION})` : 'Development build (no version stamp)';
+      if (isApk() && pendingDownload) { offerPending(pendingDownload); return status; }
+      showStatus(status);
+    }
   } catch (e) {
-    status = reg && reg.waiting ? 'Update ready' : (manual ? 'Could not check for updates (offline?)' : '');
+    status = manual ? 'Could not check for updates (offline?)' : '';
+    if (status) showStatus(status);
   }
-  if (reg && reg.waiting && !isApk()) offerWeb({ version: 'ready' });
   return status;
+}
+
+/** A worker that finished installing in an EARLIER session is activated now, silently, before the user does anything. */
+async function applyWaitingOnLaunch(r) {
+  if (!r || !r.waiting || !navigator.serviceWorker.controller) return false;
+  const k = 'rp.swApplied', last = Number(sessionStorage.getItem(k) || 0);
+  if (Date.now() - last < 30000) return false;                       // never loop
+  sessionStorage.setItem(k, String(Date.now()));
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } }, { once: true });
+  r.waiting.postMessage('skip-waiting');
+  setTimeout(() => { if (!reloading && r.waiting) r.waiting.postMessage('skip-waiting'); }, 3000);   // busy device: ask once more
+  return true;
 }
 
 export async function initUpdates() {
@@ -167,13 +202,9 @@ export async function initUpdates() {
       try { if ((await native('canInstall')).allowed) installDownloaded(waitingForPermission); } catch {}
     });
   }
-  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) { setTimeout(() => checkForUpdates(), 3000); return; }
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
   try { reg = await navigator.serviceWorker.register('sw.js'); } catch (e) { console.warn('SW registration failed', e); return; }
-  const watch = (w) => w && w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) offerWeb({ version: 'ready' }); });
-  if (reg.waiting && navigator.serviceWorker.controller) offerWeb({ version: 'ready' });
-  watch(reg.installing); reg.addEventListener('updatefound', () => watch(reg.installing));
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading && document.getElementById('update-banner') && !document.getElementById('update-banner').hidden) { reloading = true; location.reload(); } });
-  setTimeout(() => checkForUpdates(), 2500);
-  let last = Date.now();
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - last > 10 * 60 * 1000) { last = Date.now(); checkForUpdates(); } });
+  // No banner for a waiting worker (that was the "update on the cover screen even though I'm current" prompt): it is applied on
+  // the next launch, or right away by Settings → Check for updates → Reload.
+  await applyWaitingOnLaunch(reg);
 }

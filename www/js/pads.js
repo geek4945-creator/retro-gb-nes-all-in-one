@@ -15,6 +15,14 @@ export const CONTROLS = [
   { i: 4, l: 'D-pad Up' }, { i: 5, l: 'D-pad Down' }, { i: 6, l: 'D-pad Left' }, { i: 7, l: 'D-pad Right' },
   { i: 14, l: 'L3 (stick click)' }, { i: 15, l: 'R3 (stick click)' },
 ];
+// Analog stick directions (EmulatorJS indices 16–23 = RetroArch analog left/right X+/X−/Y+/Y−). Values sent to the core are 0..0x7fff.
+export const STICK_CONTROLS = [
+  { i: 16, l: 'Left stick → right' }, { i: 17, l: 'Left stick ← left' }, { i: 19, l: 'Left stick ↑ up' }, { i: 18, l: 'Left stick ↓ down' },
+  { i: 20, l: 'Right stick → (N64 C →)' }, { i: 21, l: 'Right stick ← (N64 C ←)' }, { i: 23, l: 'Right stick ↑ (N64 C ↑)' }, { i: 22, l: 'Right stick ↓ (N64 C ↓)' },
+];
+export const isAnalogIndex = (i) => i >= 16 && i <= 23;
+export const CONTROL_NAMES = Object.fromEntries([...CONTROLS, ...STICK_CONTROLS].map((c) => [c.i, c.l]));
+export const AXIS_NAMES = ['LEFT_STICK_X', 'LEFT_STICK_Y', 'RIGHT_STICK_X', 'RIGHT_STICK_Y'];
 export const PAD_LABELS = { 0: 'BUTTON_1', 1: 'BUTTON_2', 2: 'BUTTON_3', 3: 'BUTTON_4', 4: 'LEFT_TOP_SHOULDER', 5: 'RIGHT_TOP_SHOULDER', 6: 'LEFT_BOTTOM_SHOULDER', 7: 'RIGHT_BOTTOM_SHOULDER', 8: 'SELECT', 9: 'START', 10: 'LEFT_STICK', 11: 'RIGHT_STICK', 12: 'DPAD_UP', 13: 'DPAD_DOWN', 14: 'DPAD_LEFT', 15: 'DPAD_RIGHT' };
 export const PRETTY = { BUTTON_1: 'Face ↓ (A/✕)', BUTTON_2: 'Face → (B/○)', BUTTON_3: 'Face ← (X/□)', BUTTON_4: 'Face ↑ (Y/△)', LEFT_TOP_SHOULDER: 'L1 / LB', RIGHT_TOP_SHOULDER: 'R1 / RB', LEFT_BOTTOM_SHOULDER: 'L2 / LT', RIGHT_BOTTOM_SHOULDER: 'R2 / RT', SELECT: 'Select / Back', START: 'Start', LEFT_STICK: 'L3', RIGHT_STICK: 'R3', DPAD_UP: 'D-pad ↑', DPAD_DOWN: 'D-pad ↓', DPAD_LEFT: 'D-pad ←', DPAD_RIGHT: 'D-pad →' };
 export const prettyPad = (l) => (l ? PRETTY[l] || l.replace(/_/g, ' ').replace(':+1', ' +').replace(':-1', ' −') : '—');
@@ -35,8 +43,36 @@ export const DEFAULT_PAD = { layout: 'nintendo', deadzone: 0.15, hideTouch: true
 export const loadPad = () => { try { return { ...DEFAULT_PAD, ...JSON.parse(localStorage.getItem('rp.pad') || '{}') }; } catch { return { ...DEFAULT_PAD }; } };
 export const savePad = (s) => localStorage.setItem('rp.pad', JSON.stringify(s));
 
-/** EmulatorJS `controls` object ({player:{controlIndex:{value:key, value2:gamepadLabel}}}) for 4 players, user overrides applied. */
-export function buildControls(s = loadPad()) {
+/* Per-game overrides made in the in-game EmulatorJS "Control Settings" (same shape as s.map: {player:{index:{key?, pad?}}}). */
+const GAME_KEY = (id) => 'rp.pad.game.' + id;
+export const loadGameMap = (id) => { try { return id ? JSON.parse(localStorage.getItem(GAME_KEY(id)) || '{}') : {}; } catch { return {}; } };
+export const saveGameMap = (id, m) => { if (!id) return; if (m && Object.keys(m).length) localStorage.setItem(GAME_KEY(id), JSON.stringify(m)); else localStorage.removeItem(GAME_KEY(id)); };
+
+/** Overrides needed to turn controls `base` into `cur` (only the entries that differ). */
+export function diffControls(base, cur, normKey = (k) => k) {
+  const out = {};
+  for (let p = 0; p < 4; p++) {
+    const b = (base && base[p]) || {}, c = (cur && cur[p]) || {};
+    for (const i of new Set([...Object.keys(b), ...Object.keys(c)])) {
+      const o = {}, bb = b[i] || {}, cc = c[i] || {};
+      const nk = (k) => { const v = normKey(k); return v === undefined || v === null || v === '' || v === 0 || Number.isNaN(v) || v === -1 ? '' : String(v); };
+      if (nk(bb.value) !== nk(cc.value)) o.key = cc.value === undefined ? '' : cc.value;
+      if ((bb.value2 || '') !== (cc.value2 || '')) o.pad = cc.value2 || '';
+      if (Object.keys(o).length) (out[p] = out[p] || {})[i] = o;
+    }
+  }
+  return out;
+}
+export function mergeMaps(a, b) {
+  const out = JSON.parse(JSON.stringify(a || {}));
+  for (const p of Object.keys(b || {})) for (const i of Object.keys(b[p])) { out[p] = out[p] || {}; out[p][i] = { ...(out[p][i] || {}), ...b[p][i] }; }
+  return out;
+}
+
+/** EmulatorJS `controls` object ({player:{controlIndex:{value:key, value2:gamepadLabel}}}) for 4 players, user overrides applied
+ *  (global Settings → Controllers map, then this game's in-game Control Settings changes). */
+export function buildControls(s = loadPad(), gameMap = null) {
+  if (gameMap) s = { ...s, map: mergeMaps(s.map, gameMap) };
   const out = { 0: {}, 1: {}, 2: {}, 3: {} };
   const pad = PAD_DEFAULTS[s.layout] || PAD_DEFAULTS.nintendo, kb = KB_DEFAULTS[s.kbPreset] || KB_DEFAULTS.retro;
   for (let p = 0; p < 4; p++) {

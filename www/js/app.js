@@ -9,7 +9,7 @@ import { openCoverPicker } from './cover.js';
 import { openControllers } from './padsui.js';
 import { openDsTouch } from './dsui.js';
 import { openMenuBtnSettings } from './ingameui.js';
-import { initUpdates, checkForUpdates, currentBuild, isApk } from './updates.js';
+import { initUpdates, checkForUpdates, currentBuild, isApk, updatePanel } from './updates.js';
 import { openBackup } from './backup.js';
 import { initFolders, drawFolders } from './foldersui.js';
 import * as cloud from './cloud.js';
@@ -394,6 +394,7 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row', id: 'btn-ra', textContent: '🏆 RetroAchievements…', onclick: () => openRA(d) }),
     el('button', { className: 'row', id: 'btn-backup', textContent: '💾 Backup & restore…', onclick: () => { d.close(); openBackup($('#backup'), toast); } }),
     el('button', { className: 'row', id: 'btn-update', textContent: `🔄 Check for updates (version ${currentBuild().version})`, onclick: async (e) => { const b = e.currentTarget; b.disabled = true; const m = await checkForUpdates({ manual: true }); b.disabled = false; toast(m || 'Checked.'); } }),
+    updatePanel(),
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
     el('button', { className: 'row', id: 'btn-ds', textContent: '🖐 Nintendo DS touch & screens…', onclick: () => { d.close(); openDsTouch($('#dstouch')); } }),
     el('button', { className: 'row', id: 'btn-controllers', textContent: '🎮 Controllers…', onclick: () => { d.close(); openControllers(); } }),
