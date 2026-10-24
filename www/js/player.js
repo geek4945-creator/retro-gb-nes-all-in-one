@@ -168,6 +168,7 @@ function setMenu(open) {
   try { open ? emu().pause(true) : emu().play(true); } catch {}
   if (open) { refreshMenu(); const h = $('#pm-hint'); const sy = SYSTEMS[rom.system] || {}; if (h) h.textContent = [sy.label, `${sy.players || 1} player${(sy.players || 1) > 1 ? 's' : ''}`, sy.analog ? 'analog sticks' : '', sy.hint || ''].filter(Boolean).join(' · '); const first = menuEl.querySelector('button'); nav.setFocus(first); }
   window.__rpMenuOpen = open;
+  if (np && np.isHosting()) np.broadcast({ t: 'paused', paused: open });
 }
 $('#menu-btn').addEventListener('click', () => setMenu(!menuOpen));
 $('#pm-resume').onclick = () => setMenu(false);
@@ -222,6 +223,15 @@ function closePanel() {
 }
 $('#pmpanel-back').onclick = closePanel;
 $('#pm-settings').onclick = () => { const e = emu(); e.settingsMenuOpen = true; openPanel('Emulator settings', e.settingsMenu, () => e.closeSettingsMenu && e.closeSettingsMenu()); };
+// online / LAN play (netplay.js is only loaded when used)
+let np = null;
+async function netplay() {
+  if (np) return np;
+  np = await import('./netplay.js');
+  np.init({ emu, rom: () => rom, maxP: () => (rom && MAX_PLAYERS[rom.system]) || 4, toast: ptoast });
+  return np;
+}
+$('#pm-net').onclick = async () => { try { const n = await netplay(); openPanel('Online play', n.panel(), () => {}); } catch (e) { say('Online play unavailable: ' + e.message); } };
 $('#pm-disc').onclick = () => { const e = emu(); e.disksMenuOpen = true; openPanel('Disc / disk', e.disksMenu, () => e.closeDisksMenu && e.closeDisksMenu()); };
 
 /* ---------- the ☰ button: position + fade-out from Settings, always one tap away ---------- */

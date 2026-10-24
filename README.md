@@ -157,6 +157,26 @@ The library has a **Scan** button and a **📁 ROM folders** button. Single file
 - Games are copied into the app's storage, so they keep working offline and when the folder is gone. Removing a folder never deletes games.
 - Settings → **📁 ROM folders…** lists the folders with their file count and last scan time, plus Rescan, Remove, and scan progress.
 
+## 🌐 Online & LAN play (netplay)
+
+Play with or against friends over the internet or on the same Wi-Fi.
+
+1. **Host:** start a game → ☰ → **🌐 Online play… → Start a room**. You get a 6-letter **room code** and a share link.
+2. **Friends:** open the link, or in Retro Pocket go to Settings → 🌐 Online play → **Join a friend's game** and enter the code. They see your screen live and play as **Player 2–4**. Controls: the on-screen touch pad, a keyboard (arrows, Z/X/A/S, Q/W, Enter, Shift), or a Bluetooth/USB controller.
+3. The host decides who is who: each guest can be Player 2/3/4, **Player 1 (shared)** for 1-player games (take turns or help out), or **Watching**. The host can also remove guests. A badge shows the room code and guest count.
+
+**How it works, honestly:**
+- It is **host-streams-the-game**: the emulator runs only on the host. Guests receive a WebRTC video+audio stream and send their buttons back over a WebRTC data channel.
+- So it works with **every system and core**, guests **don't need the ROM, BIOS or the same app version**, and the players can never desync. (EmulatorJS' own netplay is experimental, needs the same ROM everywhere, and is disabled in 4.2.3.)
+- Guests see the game with the network delay added. On the same Wi-Fi that is ~20–60 ms, which is fine for most games. Over the internet it is typically 50–150 ms: good for RPGs, puzzle, party, and co-op games, and noticeable in twitchy fighting games.
+- The host's device does all the work (emulating plus video encoding). A recent phone handles 8/16-bit systems easily; for 3D systems, host on a computer.
+- Players per system follow the console: NES/SNES/Genesis/N64/PS1 up to 2–4, Game Boy/GBA/DS 1 (guests share Player 1 or watch).
+- **Signalling:** by default the free public PeerJS server introduces the devices. No account or setup is needed. Self-host with [`server/`](server/README.md) (Render / Fly.io / Railway / Docker, one click) and enter its URL under Settings → Online play.
+- **LAN:** on the same Wi-Fi, WebRTC connects the two devices directly, so the stream never leaves your network. Only the handshake goes to the signalling server. For play with no internet at all, run `server/` on a PC on the LAN.
+- **STUN/TURN:** Google + Cloudflare STUN by default. If someone on a strict mobile/corporate network can't connect ("No answer from that room"), add a TURN server in Settings → Online play.
+- iPhone guests: Safari plays the stream muted until you tap **🔇 Tap for sound**. Hosting from iPhone works too, but iOS stops the game when Safari goes to the background.
+- The Android app's share link points to the web version (`…github.io/…/join.html`), so friends need nothing installed.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

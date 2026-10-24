@@ -11,6 +11,7 @@ import { openMenuBtnSettings } from './ingameui.js';
 import { initUpdates, checkForUpdates, currentBuild, isApk } from './updates.js';
 import { openBackup } from './backup.js';
 import { initFolders, drawFolders } from './foldersui.js';
+import { loadNet, saveNet, DEFAULT_STUN, parseServer } from './netcfg.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
 
@@ -324,6 +325,7 @@ $('#btn-settings').onclick = async () => {
     el('label', { className: 'row select' }, 'Auto-resume saved session',
       el('input', { type: 'checkbox', checked: !!settings.autoResume, onchange: (e) => { settings.autoResume = e.target.checked; saveSettings(settings); } })),
     el('button', { className: 'row', id: 'btn-folders-settings', textContent: '📁 ROM folders…', onclick: () => { d.close(); drawFolders(); } }),
+    el('button', { className: 'row', id: 'btn-net', textContent: '🌐 Online play (netplay)…', onclick: () => openNetSettings(d) }),
     el('button', { className: 'row', id: 'btn-backup', textContent: '💾 Backup & restore…', onclick: () => { d.close(); openBackup($('#backup'), toast); } }),
     el('button', { className: 'row', id: 'btn-update', textContent: `🔄 Check for updates (version ${currentBuild().version})`, onclick: async (e) => { const b = e.currentTarget; b.disabled = true; const m = await checkForUpdates({ manual: true }); b.disabled = false; toast(m || 'Checked.'); } }),
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
@@ -335,6 +337,26 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row ghost', textContent: 'Close', onclick: () => d.close() }));
   d.showModal();
 };
+
+function openNetSettings(d) {
+  const c = loadNet();
+  const field = (label, key, ph, type = 'text') => el('label', { className: 'row field' }, el('span', { textContent: label }),
+    el('input', { type, id: 'net-' + key, value: c[key] || '', placeholder: ph, autocomplete: 'off', spellcheck: false, oninput: (e) => { c[key] = e.target.value.trim(); } }));
+  d.replaceChildren(el('h3', { textContent: 'Online play' }),
+    el('p', { className: 'muted small', textContent: 'Host: start a game, then ☰ → 🌐 Online play → Start a room and share the code. Friends see your screen and control Player 2–4; they don\'t need the game file. Works over the internet and on the same Wi-Fi (the stream goes directly device-to-device).' }),
+    el('button', { className: 'row primary', id: 'btn-join', textContent: '🎮 Join a friend\'s game…', onclick: () => { location.href = 'join.html'; } }),
+    field('Signalling server (empty = free public PeerJS server)', 'server', 'e.g. https://my-retro-server.onrender.com'),
+    field('STUN servers', 'stun', DEFAULT_STUN),
+    field('TURN server (optional, for strict networks)', 'turnUrl', 'turn:turn.example.com:3478'),
+    field('TURN username', 'turnUser', ''),
+    field('TURN password', 'turnPass', '', 'password'),
+    el('p', { className: 'muted small', textContent: 'Self-host the server from the /server folder (Render, Fly.io or Railway: see README). For LAN-only play without internet, run it on a computer on your Wi-Fi and enter http://<its-ip>:9000.' }),
+    el('button', { className: 'row', id: 'btn-net-save', textContent: 'Save', onclick: () => {
+      try { if (c.server) parseServer(c.server); } catch { toast('That server address is not valid'); return; }
+      if (!c.stun) c.stun = DEFAULT_STUN; saveNet(c); toast('Online play settings saved'); $('#btn-settings').click();
+    } }),
+    el('button', { className: 'row ghost', textContent: 'Back', onclick: () => $('#btn-settings').click() }));
+}
 
 function openCoreDefaults(d) {
   const keys = sortedSystemKeys().filter((k) => !['gb', 'gbc', 'nes', 'nds'].includes(k) && SYSTEMS[k].cores.length > 1);

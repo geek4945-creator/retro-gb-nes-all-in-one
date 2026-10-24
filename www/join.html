@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Retro Pocket – Join a game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/join.css">
+</head>
+<body>
+  <form id="joinform">
+    <h1>🌐 Join a game</h1>
+    <p>Ask the host for the room code (☰ → Online play on their device).</p>
+    <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ROOM CODE" required>
+    <input id="name" autocomplete="nickname" maxlength="24" placeholder="Your name">
+    <button id="join" type="submit">Join</button>
+    <p id="jerr" class="err" hidden></p>
+    <p class="small" id="srvinfo"></p>
+    <a class="small" href="index.html">‹ Back to my library</a>
+  </form>
+  <div id="stage" hidden>
+    <video id="screen" playsinline autoplay muted></video>
+    <div id="topbar">
+      <button id="leave" type="button">‹ Leave</button>
+      <span id="info">Connecting…</span>
+      <button id="sound" type="button">🔇 Tap for sound</button>
+      <button id="padtoggle" type="button" title="Show/hide touch controls">🎮</button>
+    </div>
+    <div id="overlay" hidden></div>
+    <div id="tpad">
+      <div id="dpad" data-dpad><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i></div>
+      <div class="shoulder left"><button data-id="10">L</button><button data-id="12">L2</button></div>
+      <div class="shoulder right"><button data-id="13">R2</button><button data-id="11">R</button></div>
+      <div class="mid"><button data-id="2">SELECT</button><button data-id="3">START</button></div>
+      <div id="face"><button data-id="9" class="x">X</button><button data-id="1" class="y">Y</button><button data-id="8" class="a">A</button><button data-id="0" class="b">B</button></div>
+    </div>
+  </div>
+  <script type="module" src="js/join.js"></script>
+</body>
+</html>

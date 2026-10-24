@@ -1,0 +1,12 @@
+# Render Blueprint: one free web service running the Retro Pocket netplay (PeerJS signalling) server from /server.
+services:
+  - type: web
+    name: retro-pocket-netplay
+    runtime: docker
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "9000"

@@ -118,3 +118,6 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .scan-progress i { display: block; height: 100%; background: var(--accent, #4f7cff); transition: width .2s; }
 .scan-progress.indet i { animation: rp-indet 1.2s linear infinite; width: 40% !important; }
 @keyframes rp-indet { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.row.field { flex-direction: column; align-items: stretch; gap: 6px; font-size: 14px; }
+.row.field input { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px; font-size: 14px; }
+.row.primary { background: var(--accent, #7c5cff); border-color: var(--accent, #7c5cff); color: #fff; font-weight: 600; }

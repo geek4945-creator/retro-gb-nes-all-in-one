@@ -1,0 +1,19 @@
+{
+  "name": "retro-pocket-netplay-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Signalling server (PeerJS) for Retro Pocket online play. Game video/inputs go peer-to-peer; this only introduces the devices.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "peer": "^1.0.2"
+  },
+  "license": "MIT"
+}

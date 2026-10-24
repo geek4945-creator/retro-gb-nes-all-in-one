@@ -1,0 +1,27 @@
+html, body { margin: 0; height: 100%; background: #0d0e14; color: #eceef7; font: 16px system-ui, -apple-system, sans-serif; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+[hidden] { display: none !important; }
+#joinform { max-width: 380px; margin: 0 auto; padding: max(30px, env(safe-area-inset-top)) 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+#joinform h1 { margin: 0; font-size: 26px; } #joinform p { margin: 0; color: #b9bdd3; }
+#joinform input { padding: 14px; border-radius: 12px; border: 1px solid #2a2e40; background: #1a1c27; color: #fff; font-size: 18px; }
+#code { font: 700 26px ui-monospace, Menlo, monospace; letter-spacing: 5px; text-align: center; text-transform: uppercase; }
+#joinform button { padding: 14px; border-radius: 12px; border: 0; background: #7c5cff; color: #fff; font-size: 17px; font-weight: 700; }
+.err { color: #ff7b8a !important; } .small { font-size: 13px; color: #8c91a8 !important; } a { color: #a99bff; }
+#stage { position: fixed; inset: 0; background: #000; touch-action: none; }
+#screen { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; image-rendering: pixelated; }
+#topbar { position: absolute; z-index: 3; top: max(6px, env(safe-area-inset-top)); left: 6px; right: 6px; display: flex; gap: 6px; align-items: center; font-size: 13px; }
+#topbar button { padding: 6px 10px; border-radius: 14px; border: 1px solid rgba(255,255,255,.2); background: rgba(20,20,30,.6); color: #fff; font: 600 13px system-ui, sans-serif; }
+#info { flex: 1; text-align: center; color: #d6d8ea; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#overlay { position: absolute; z-index: 2; left: 50%; top: 40%; transform: translate(-50%, -50%); background: rgba(20,20,30,.85); padding: 14px 18px; border-radius: 14px; text-align: center; max-width: 80%; }
+#tpad { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+#tpad button, #dpad { pointer-events: auto; touch-action: none; }
+#tpad button { position: relative; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); font: 700 15px system-ui, sans-serif; border-radius: 50%; }
+#tpad button.on, #dpad i.on { background: rgba(124,92,255,.6); }
+#dpad { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(40px, env(safe-area-inset-bottom)); width: 150px; height: 150px; }
+#dpad i { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.3); border-radius: 10px; }
+#dpad .u { left: 50px; top: 0; } #dpad .d { left: 50px; bottom: 0; } #dpad .l { left: 0; top: 50px; } #dpad .r { right: 0; top: 50px; }
+#face { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(40px, env(safe-area-inset-bottom)); width: 160px; height: 160px; }
+#face button { position: absolute; width: 58px; height: 58px; } #face .x { left: 51px; top: 0; } #face .b { left: 51px; bottom: 0; } #face .y { left: 0; top: 51px; } #face .a { right: 0; top: 51px; }
+.shoulder { position: absolute; top: 56px; display: flex; gap: 8px; } .shoulder.left { left: 12px; } .shoulder.right { right: 12px; }
+.shoulder button, .mid button { border-radius: 14px !important; padding: 8px 14px; font-size: 13px !important; }
+.mid { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 16px; }
+body.nopad #tpad { display: none; }
