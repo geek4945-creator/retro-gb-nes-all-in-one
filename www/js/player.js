@@ -3,6 +3,7 @@
 import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
 import { hardcoreOn, achievementsPanel } from './retroach.js';
+import { cheatsPanel, applyCheats, loadCheats } from './cheats.js';
 import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
 import { loadUi, saveUi, UI_POS } from './ingameui.js';
@@ -187,7 +188,7 @@ function refreshMenu() {
   $('#pm-sound').textContent = `${e.muted ? '🔇' : '🔊'} Sound: ${e.muted ? 'Off' : 'On'}`;
   $('#pm-ff').textContent = `⏩ Fast-forward: ${e.isFastForward ? 'On' : 'Off'}`;
   $('#pm-full').hidden = !fsSupported(); $('#pm-full').textContent = isFull() ? '⛶ Exit fullscreen' : '⛶ Fullscreen';
-  $('#pm-cheats').hidden = HARDCORE || !barOn(/^cheats?$/i); $('#pm-load').hidden = HARDCORE; $('#pm-controls').hidden = !barOn(/control/i);
+  $('#pm-cheats').hidden = HARDCORE; $('#pm-load').hidden = HARDCORE; $('#pm-controls').hidden = !barOn(/control/i);
   $('#pm-disc').hidden = !(e.diskParent && e.diskParent.style.display !== 'none' && e.gameManager && e.gameManager.getDiskCount() > 1);
   $('#pm-btnpos').textContent = `📍 Menu button: ${UI_POS[loadUi().pos]}`;
 }
@@ -207,7 +208,7 @@ $('#pm-full').onclick = () => {
   setMenu(false);
 };
 $('#pm-controls').onclick = () => { setMenu(false); const b = barBtn(/control/i); if (b) b.click(); };
-$('#pm-cheats').onclick = () => { setMenu(false); const b = barBtn(/^cheats?$/i); if (b) b.click(); };
+$('#pm-cheats').onclick = () => openPanel('Cheats', cheatsPanel({ rom, gm: () => emu() && emu().gameManager, say }), () => {});
 $('#pm-btnpos').onclick = () => { const o = Object.keys(UI_POS), u = loadUi(); saveUi({ ...u, pos: o[(o.indexOf(u.pos) + 1) % o.length] }); refreshMenu(); };
 // EmulatorJS' settings / disc panels normally pop out of its (hidden) bottom bar: show them in our own full-screen panel
 let panelNode = null, panelHome = null, panelClose = null;
@@ -336,7 +337,7 @@ requestAnimationFrame(hotkeys);
   }
   window.EJS_ready = () => { status.hidden = true; };
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
+  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
   if (HARDCORE) Object.assign(window.EJS_defaultOptions, { rewindEnabled: 'disabled', 'slowMotion': 'disabled' });
   if (params.get('resume') === '1' && !HARDCORE) {

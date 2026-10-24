@@ -217,6 +217,27 @@ Settings → **🏆 RetroAchievements**:
 
 Unlocks you earn in RetroArch on other devices show up here.
 
+## 🧪 Cheats
+
+In game, open **☰ → 🧪 Cheats…**:
+- **Add a code** by typing any code the core understands:
+  - NES: Game Genie / Pro Action Rocky / raw `AAAA:VV`
+  - SNES: Game Genie / Pro Action Replay
+  - GB/GBC: Game Genie / GameShark
+  - GBA: Action Replay / GameShark / CodeBreaker
+  - Genesis, SMS, GG: Game Genie / PAR
+  - N64, PS1: GameShark
+  - DS: Action Replay
+  - PSP: CWCheat
+
+  To put several codes in one cheat, join them with `+`.
+- **📚 Browse cheat database** finds your game in the [libretro-database](https://github.com/libretro/libretro-database/tree/master/cht) cheat collection, then lets you tap a cheat to add and enable it.
+  - The list is downloaded from GitHub on demand and cached for 14 days.
+  - It needs internet. GitHub allows 60 lookups per hour per IP address.
+- Cheats are saved per game and switched on again automatically the next time you start it. Use the checkbox to turn one off.
+- Database codes are made for a specific ROM version. If a code glitches the game, turn it off.
+- Cheats are disabled in RetroAchievements hardcore mode.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.
