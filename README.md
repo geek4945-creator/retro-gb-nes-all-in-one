@@ -238,6 +238,17 @@ In game, open **☰ → 🧪 Cheats…**:
 - Database codes are made for a specific ROM version. If a code glitches the game, turn it off.
 - Cheats are disabled in RetroAchievements hardcore mode.
 
+## ⭐ Favorites, recents, play time & collections
+
+- **Favorites:** open a game's **⋯** menu and tap **☆ Add to favorites**. The game gets a ★ badge and appears under the **★ Favorites** filter chip.
+- **🕘 Recent** shows the 24 games you played most recently.
+- **Play time** counts only while a game is actually running: not paused, and not with the app in the background.
+  - Cards show ⏱ once a game has 1 minute or more of play.
+  - The ⋯ sheet shows total time, the number of sessions and the date you last played.
+- **Sort** with the selector next to the search box: Recent, A–Z or Most played.
+- **Collections:** go to **⋯ → 📁 Collections…** to create collections (for example "Couch co-op" or "RPGs") and tick the games that belong in them. Each collection gets its own filter chip. You can rename or delete collections from the same screen.
+- All of this is stored on the device and included in **Backup**. Removing a game also removes its entries.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

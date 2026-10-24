@@ -4,6 +4,8 @@ import * as db from './db.js';
 import { EJS_CDN, SYSTEMS, CORE_LABELS, altCore, needsThreads } from './cores.js';
 import { hardcoreOn, achievementsPanel } from './retroach.js';
 import { cheatsPanel, applyCheats, loadCheats } from './cheats.js';
+import { startSession, trackPlay } from './meta.js';
+let playTracker = null;
 import { buildBios } from './bios.js';
 import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
 import { loadUi, saveUi, UI_POS } from './ingameui.js';
@@ -337,7 +339,7 @@ requestAnimationFrame(hotkeys);
   }
   window.EJS_ready = () => { status.hidden = true; };
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
+  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); }, 50); };
 
   if (HARDCORE) Object.assign(window.EJS_defaultOptions, { rewindEnabled: 'disabled', 'slowMotion': 'disabled' });
   if (params.get('resume') === '1' && !HARDCORE) {

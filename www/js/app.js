@@ -1,3 +1,4 @@
+import * as meta from './meta.js';
 import { SYSTEMS, GROUPS, CORE_LABELS, sortedSystemKeys, titleFrom, defaultCore, loadSettings, saveSettings, extOf, needsThreads } from './cores.js';
 import { detect, storedZip, parseCue, parseM3u } from './detect.js';
 import { biosStatus } from './bios.js';
@@ -43,36 +44,54 @@ async function refresh() {
   render();
 }
 
+const SORTS = { recent: 'Recent', az: 'A–Z', played: 'Most played' };
+let sortBy = localStorage.getItem('rp.sort') || 'recent';
+function sortList(list, m) {
+  const last = (r) => Math.max(r.lastPlayed || 0, (m[r.id] || {}).last || 0) || r.added || 0;
+  if (sortBy === 'az') return list.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }));
+  if (sortBy === 'played') return list.sort((a, b) => ((m[b.id] || {}).play || 0) - ((m[a.id] || {}).play || 0) || last(b) - last(a));
+  return list.sort((a, b) => last(b) - last(a));
+}
 function render() {
   const chips = $('#chips'); chips.replaceChildren();
-  const present = ['all', ...sortedSystemKeys().filter((k) => roms.some((r) => r.system === k))];
-  if (!present.includes(filter)) filter = 'all';
-  for (const k of present) {
+  const m = meta.allMeta(), cols = meta.collections(), ids = new Set(roms.map((r) => r.id));
+  const played = (r) => (m[r.id] || {}).last || r.lastPlayed;
+  const special = [];
+  if (roms.some((r) => (m[r.id] || {}).fav)) special.push(['fav', '★ Favorites']);
+  if (roms.some(played)) special.push(['recent', '🕘 Recent']);
+  for (const c of cols) if (c.ids.some((x) => ids.has(x))) special.push(['col:' + c.id, '📁 ' + c.name]);
+  const present = [['all', 'All'], ...special, ...sortedSystemKeys().filter((k) => roms.some((r) => r.system === k)).map((k) => [k, SYSTEMS[k].short])];
+  if (!present.some(([k]) => k === filter)) filter = 'all';
+  for (const [k, label] of present) {
     chips.append(el('button', {
-      className: 'chip' + (filter === k ? ' on' : ''), type: 'button',
-      textContent: k === 'all' ? 'All' : SYSTEMS[k].short,
+      className: 'chip' + (filter === k ? ' on' : '') + (special.some(([s]) => s === k) ? ' special' : ''), type: 'button', textContent: label,
       onclick: () => { filter = k; render(); },
     }));
+    chips.lastChild.setAttribute('data-f', k);
   }
   chips.hidden = roms.length === 0;
   const on = chips.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'center', block: 'nearest' });
   $('#search').hidden = roms.length === 0;
+  const ss = $('#sort'); ss.hidden = roms.length < 2; ss.value = sortBy;
 
   const q = query.trim().toLowerCase();
-  const list = roms.filter((r) => (filter === 'all' || r.system === filter) && (!q || r.title.toLowerCase().includes(q)));
+  const col = filter.startsWith('col:') && cols.find((c) => 'col:' + c.id === filter);
+  const match = (r) => filter === 'all' || r.system === filter || (filter === 'fav' && (m[r.id] || {}).fav) || (filter === 'recent' && played(r)) || (col && col.ids.includes(r.id));
+  let list = sortList(roms.filter((r) => match(r) && (!q || r.title.toLowerCase().includes(q))), m);
+  if (filter === 'recent') list = roms.filter((r) => played(r) && (!q || r.title.toLowerCase().includes(q))).sort((a, b) => played(b) - played(a)).slice(0, 24);
   for (const u of artUrls.values()) if (u.startsWith('blob:')) URL.revokeObjectURL(u);
   artUrls.clear();
   const missing = roms.filter((r) => !artMap.has(r.id) || artMap.get(r.id).status === 'none').length;
   const ab = $('#btn-art'); ab.hidden = !missing; ab.textContent = `🖼 Get art (${missing})`;
   const grid = $('#library'); grid.replaceChildren();
   $('#empty').hidden = roms.length !== 0;
-  for (const r of list) grid.append(card(r));
+  for (const r of list) grid.append(card(r, m[r.id] || {}));
   if (roms.length && !list.length) grid.append(el('p', { className: 'muted center', textContent: 'No matches.' }));
 }
 
 function hue(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 
-function card(r) {
+function card(r, mt = {}) {
   const sys = SYSTEMS[r.system] || SYSTEMS.gb;
   const h = hue(r.title);
   const art = el('div', { className: 'art' },
@@ -88,6 +107,8 @@ function card(r) {
     art.classList.add('has-img'); art.prepend(img);
   }
   if (resumable.has(r.id)) art.append(el('span', { className: 'resume', textContent: '▶ Resume' }));
+  if (mt.fav) art.append(el('span', { className: 'fav', textContent: '★', title: 'Favorite' }));
+  if (mt.play >= 60000) art.append(el('span', { className: 'ptime', textContent: '⏱ ' + meta.fmtTime(mt.play) }));
   const c = el('div', { className: 'card', role: 'button', tabIndex: 0 }, art,
     el('div', { className: 'meta' }, el('span', { className: 'name', textContent: r.title }),
       el('button', { className: 'more', type: 'button', ariaLabel: 'Options for ' + r.title, textContent: '⋯', onclick: (e) => { e.stopPropagation(); openSheet(r); } })));
@@ -266,11 +287,16 @@ async function openSheet(r) {
   const rows = [
     el('h3', { textContent: r.title }),
     el('p', { className: 'muted', textContent: `${sys.label} · ${size} · ${r.file}` }),
+    playLine(r),
     el('button', { className: 'row primary', textContent: resumable.has(r.id) ? '▶ Resume where you left off' : '▶ Play', onclick: () => play(r, resumable.has(r.id)) }),
   ];
   if (resumable.has(r.id)) {
     rows.push(el('button', { className: 'row', textContent: '↻ Start from the beginning', onclick: async () => { await db.deleteState(r.id); play(r, false); } }));
   }
+  rows.push(el('button', { className: 'row', id: 'sheet-fav', textContent: meta.isFav(r.id) ? '★ Remove from favorites' : '☆ Add to favorites', onclick: (e) => {
+    const f = meta.toggleFav(r.id); e.currentTarget.textContent = f ? '★ Remove from favorites' : '☆ Add to favorites'; render(); toast(f ? 'Added to favorites' : 'Removed from favorites');
+  } }));
+  rows.push(el('button', { className: 'row', id: 'sheet-cols', textContent: '📁 Collections…', onclick: () => openCollections(r) }));
   rows.push(el('button', { className: 'row', textContent: '🖼 Change cover…', onclick: () => {
     d.close();
     openCoverPicker(r, { onSaved: async (res) => {
@@ -301,7 +327,7 @@ async function openSheet(r) {
     } }),
     el('button', { className: 'row danger', textContent: 'Remove from library', onclick: async () => {
       if (!confirm(`Remove “${r.title}” from this device?\nIn-game saves may also be lost.`)) return;
-      await db.deleteRom(r.id); await db.deleteState(r.id); await db.deleteArt(r.id).catch(() => {}); d.close(); await refresh(); toast('Removed');
+      await db.deleteRom(r.id); await db.deleteState(r.id); meta.forget(r.id); await db.deleteArt(r.id).catch(() => {}); d.close(); await refresh(); toast('Removed');
     } }),
     el('button', { className: 'row ghost', textContent: 'Close', onclick: () => d.close() }));
   d.replaceChildren(...rows); d.showModal();
@@ -309,6 +335,33 @@ async function openSheet(r) {
 for (const dlg of document.querySelectorAll('dialog')) {
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
 }
+
+function playLine(r) {
+  const m = meta.meta(r.id), last = Math.max(m.last || 0, r.lastPlayed || 0), bits = [];
+  if (m.play) bits.push('Played ' + meta.fmtTime(m.play)); if (m.plays) bits.push(`${m.plays} session${m.plays > 1 ? 's' : ''}`);
+  if (last) bits.push('last ' + new Date(last).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(last).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }));
+  return el('p', { className: 'muted small', id: 'sheet-play', textContent: bits.length ? '⏱ ' + bits.join(' · ') : 'Not played yet' });
+}
+// add/remove a game to/from collections; create, rename, delete collections
+function openCollections(r) {
+  const d = $('#sheet');
+  const draw = () => {
+    const cols = meta.collections(), name = el('input', { id: 'col-new', placeholder: 'New collection name', maxLength: 40 });
+    const add = () => { if (!name.value.trim()) return; const c = meta.newCollection(name.value); if (r) meta.setInCollection(c.id, r.id, true); draw(); render(); };
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    d.replaceChildren(el('h3', { textContent: r ? `Collections — ${r.title}` : 'Collections' }),
+      cols.length ? '' : el('p', { className: 'muted small', textContent: 'No collections yet. Make one (e.g. “Couch co-op”, “RPGs”, “Kids”).' }),
+      ...cols.map((c) => el('div', { className: 'row col-row' },
+        r ? el('label', {}, el('input', { type: 'checkbox', className: 'col-on', checked: c.ids.includes(r.id), onchange: (e) => { meta.setInCollection(c.id, r.id, e.target.checked); render(); } }), ` ${c.name}`) : el('span', { textContent: `${c.name} (${c.ids.length})` }),
+        el('button', { className: 'ghost', textContent: '✎', title: 'Rename', onclick: () => { const n = prompt('Collection name', c.name); if (n && n.trim()) { meta.renameCollection(c.id, n); draw(); render(); } } }),
+        el('button', { className: 'ghost', textContent: '🗑', title: 'Delete collection', onclick: () => { if (confirm(`Delete collection “${c.name}”? (games stay in your library)`)) { meta.deleteCollection(c.id); draw(); render(); } } }))),
+      el('div', { className: 'row col-new' }, name, el('button', { className: 'chip primary', id: 'col-add', type: 'button', textContent: '＋ Add', onclick: add })),
+      el('button', { className: 'row ghost', textContent: r ? '‹ Back' : 'Close', onclick: () => (r ? openSheet(r) : d.close()) }));
+    if (!d.open) d.showModal();
+  };
+  draw();
+}
+$('#sort').onchange = (e) => { sortBy = e.target.value; localStorage.setItem('rp.sort', sortBy); render(); };
 
 /* ---------- settings ---------- */
 $('#btn-settings').onclick = async () => {
