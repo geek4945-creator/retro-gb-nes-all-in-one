@@ -128,7 +128,9 @@ export function openCoverPicker(rom, { onSaved } = {}) {
   /* --- editor (crop / fit, pan, zoom) --- */
   async function edit(src) {
     const body = el('div', { className: 'cv-edit' }, el('p', { className: 'muted', textContent: 'Loading image…' }));
-    dlg.replaceChildren(el('div', { className: 'cv-main' }, el('div', { className: 'cv-head' }, el('h3', { textContent: 'Preview' }), el('button', { className: 'btn ghost', type: 'button', textContent: 'Back', onclick: () => { dlg.replaceChildren(main); } })), body));
+    const head = el('div', { className: 'cv-head' }, el('h3', { textContent: 'Preview' }), el('span', { className: 'cv-acts' }, el('button', { className: 'btn ghost', type: 'button', textContent: 'Back', onclick: () => { dlg.replaceChildren(main); } })));
+    dlg.replaceChildren(el('div', { className: 'cv-main' }, head, body));
+    const toTop = (b) => head.querySelector('.cv-acts').append(b);     // Save sits in the top row, never at the bottom edge
     let loaded;
     try { loaded = src.file ? { blob: src.file, via: 'file' } : await loadImage(src.url); } catch { loaded = null; }
     if (!loaded) { body.replaceChildren(el('p', { className: 'cv-src err', textContent: 'Could not load that image (blocked, missing, or not an image).' })); return; }
@@ -137,7 +139,7 @@ export function openCoverPicker(rom, { onSaved } = {}) {
       const save = el('button', { id: 'cover-save', className: 'btn primary', type: 'button', textContent: 'Use as cover (link only)', onclick: async () => {
         await db.putArt({ id: rom.id, status: 'remote', url: loaded.remote, source: 'custom', custom: true, time: Date.now() }); dlg.close(); onSaved && onSaved({ saved: true, via: 'remote' });
       } });
-      body.replaceChildren(prev, el('p', { className: 'muted small', textContent: 'This host blocks cropping/caching (CORS). The cover will be shown straight from the link and needs internet.' }), save);
+      body.replaceChildren(prev, el('p', { className: 'muted small', textContent: 'This host blocks cropping/caching (CORS). The cover will be shown straight from the link and needs internet.' })); toTop(save);
       return;
     }
     let bmp; try { bmp = await createImageBitmap(loaded.blob); } catch { body.replaceChildren(el('p', { className: 'cv-src err', textContent: 'That file is not a readable image.' })); return; }
@@ -169,7 +171,7 @@ export function openCoverPicker(rom, { onSaved } = {}) {
       await db.putArt({ id: rom.id, status: 'ok', data: await blob.arrayBuffer(), type: 'image/jpeg', source: 'custom', custom: true, name: src.label, via: loaded.via, time: Date.now() });
       dlg.close(); onSaved && onSaved({ saved: true, via: loaded.via });
     } });
-    body.replaceChildren(cv, el('label', { className: 'cv-zoom' }, 'Zoom', zr), el('p', { className: 'muted small', textContent: `Drag to reposition. ${loaded.via === 'proxy' ? 'Loaded through the keyless image proxy images.weserv.nl (the host blocks direct access).' : ''}` }), el('div', { className: 'cv-row' }, fitBtn, save));
+    body.replaceChildren(cv, el('label', { className: 'cv-zoom' }, 'Zoom', zr), el('p', { className: 'muted small', textContent: `Drag to reposition. ${loaded.via === 'proxy' ? 'Loaded through the keyless image proxy images.weserv.nl (the host blocks direct access).' : ''}` }), el('div', { className: 'cv-row' }, fitBtn)); toTop(save);
     draw();
   }
 

@@ -1,6 +1,11 @@
 // Screen filters (shaders), rewind and the ⏪ / ⏩ quick buttons next to ☰.
 // Settings are per system and live in localStorage, so they are included in Backup.
+import { presetFilter, presetRewind } from './perf.js';
 const SHADER_KEY = 'rp.shader', REWIND_KEY = 'rp.rewind', QUICK_KEY = 'rp.quick';
+// Graphics preset of the running game (Settings → Performance & device): supplies the default filter / rewind for
+// systems where you have not picked one yourself in the ☰ menu.
+let preset = null;
+export function usePreset(p) { preset = p || null; }
 
 // "ejs" is the EmulatorJS shader name. The built-ins come from EmulatorJS' shaders.js; rp-lcd is our own (below).
 export const FILTERS = {
@@ -17,7 +22,7 @@ const REWIND_DEFAULT = new Set(['nes', 'snes', 'gb', 'gbc', 'gba', 'sms', 'gg', 
 const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch { return {}; } };
 const write = (k, sys, v) => { const o = read(k); o[sys] = v; localStorage.setItem(k, JSON.stringify(o)); };
 
-export function loadFilter(sys) { const v = read(SHADER_KEY)[sys]; return FILTERS[v] ? v : 'off'; }   // default: sharp pixels, exactly as before
+export function loadFilter(sys) { const v = read(SHADER_KEY)[sys]; return FILTERS[v] ? v : preset ? presetFilter(preset, sys) : 'off'; }   // default: sharp pixels unless the preset says otherwise
 export function saveFilter(sys, key) { write(SHADER_KEY, sys, FILTERS[key] ? key : 'off'); }
 export function nextFilter(key) { const k = Object.keys(FILTERS); return k[(k.indexOf(key) + 1) % k.length]; }
 export function applyFilter(emu, key) {
@@ -28,7 +33,25 @@ export function applyFilter(emu, key) {
   return true;
 }
 
-export function loadRewind(sys) { const v = read(REWIND_KEY)[sys]; return typeof v === 'boolean' ? v : REWIND_DEFAULT.has(sys); }
+/** Has the player picked a filter for this system in the ☰ menu (as opposed to the preset default)? */
+export const filterChosen = (sys) => !!FILTERS[read(SHADER_KEY)[sys]];
+/**
+ * Start-of-game filter. EmulatorJS remembers the last shader per game itself, so an explicit choice (even "off") is always
+ * applied; a preset default is applied when it is a filter, and a filter an earlier preset put there is removed again.
+ */
+export function startFilter(emu, sys, gameId) {
+  const key = loadFilter(sys), memo = read('rp.perf.filter'), cur = emu && emu.settings ? emu.settings.shader : undefined;
+  if (filterChosen(sys) || key !== 'off') {
+    write('rp.perf.filter', gameId, filterChosen(sys) ? null : key);
+    return key === 'off' && (!cur || cur === 'disabled') ? true : applyFilter(emu, key);
+  }
+  const last = memo[gameId];
+  write('rp.perf.filter', gameId, null);
+  if (last && FILTERS[last] && cur === FILTERS[last].ejs) return applyFilter(emu, 'off');
+  return true;
+}
+
+export function loadRewind(sys) { const v = read(REWIND_KEY)[sys]; return typeof v === 'boolean' ? v : preset ? presetRewind(preset, sys) : REWIND_DEFAULT.has(sys); }
 export function saveRewind(sys, on) { write(REWIND_KEY, sys, !!on); }
 
 export function loadQuick() { const v = read(QUICK_KEY).on; return typeof v === 'boolean' ? v : true; }

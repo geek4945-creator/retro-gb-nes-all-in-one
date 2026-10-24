@@ -17,6 +17,9 @@ import * as ra from './retroach.js';
 import { loadNet, saveNet, DEFAULT_STUN, parseServer } from './netcfg.js';
 import { startPadNav } from './padnav.js';
 import { rawPads, padName } from './pads.js';
+import { initTopBars } from './topbar.js';
+import { openPerf } from './perfui.js';
+import { gamePreset, setGamePreset, effectivePreset, PRESETS } from './perf.js';
 
 const $ = (s) => document.querySelector(s);
 const el = (tag, props = {}, ...kids) => {
@@ -321,6 +324,9 @@ async function openSheet(r) {
     rows.push(el('p', { className: 'muted small' + (bst.needs ? ' warnline' : ''), textContent: bst.needs ? `⚠ BIOS needed: ${bst.spec.files.filter((x) => x.level === 'required').map((x) => x.name).join(' / ')} — not added yet.` : bst.have.length ? `BIOS on this device: ${bst.have.join(', ')}` : 'BIOS: optional for this system.' }));
     rows.push(el('button', { className: 'row', textContent: '🔑 BIOS files…', onclick: () => { d.close(); openBios($('#bios'), toast); } }));
   }
+  const gfxSel = el('select', { id: 'sheet-gfx', onchange: () => { setGamePreset(r.id, gfxSel.value); toast(gfxSel.value ? `Graphics for this game: ${PRESETS[gfxSel.value].short}` : 'Graphics: same as Settings'); } },
+    el('option', { value: '', textContent: `Same as Settings (${PRESETS[effectivePreset(null).preset].short})`, selected: !gamePreset(r.id) }), ...Object.entries(PRESETS).map(([k, v]) => el('option', { value: k, textContent: v.label, selected: gamePreset(r.id) === k })));
+  rows.push(el('label', { className: 'row select' }, 'Graphics', gfxSel));
   if (sys.cores.length > 1) rows.push(el('label', { className: 'row select' }, 'Emulator core', coreSel));
   rows.push(el('label', { className: 'row select' }, 'System', sysSel));
   rows.push(
@@ -391,6 +397,7 @@ $('#btn-settings').onclick = async () => {
     el('button', { className: 'row', id: 'btn-menubtn', textContent: '📍 In-game menu button…', onclick: () => { d.close(); openMenuBtnSettings($('#uimenu')); } }),
     el('button', { className: 'row', id: 'btn-ds', textContent: '🖐 Nintendo DS touch & screens…', onclick: () => { d.close(); openDsTouch($('#dstouch')); } }),
     el('button', { className: 'row', id: 'btn-controllers', textContent: '🎮 Controllers…', onclick: () => { d.close(); openControllers(); } }),
+    el('button', { className: 'row', id: 'btn-perf', textContent: '⚡ Performance & device…', onclick: () => openPerf(d, { onBack: () => { d.close(); $('#btn-settings').click(); }, toast }) }),
     el('button', { className: 'row', textContent: '🖼 Fetch all missing cover art', onclick: () => { d.close(); $('#btn-art').click(); } }),
     el('p', { className: 'muted', textContent: est && est.usage != null ? `Storage used: ${(est.usage / 1048576).toFixed(1)} MB` : '' }),
     el('p', { className: 'muted small', textContent: 'Retro Pocket runs RetroArch-based emulator cores (via EmulatorJS) entirely in your browser. Bring your own legally obtained ROMs — none are included. GPL-3.0.' }),
@@ -501,6 +508,7 @@ initUpdates();
 addEventListener('pageshow', (e) => { if (e.persisted) { refresh(); autoCloudSync(); } });
 setTimeout(autoCloudSync, 1500);
 refresh().catch((e) => { console.error(e); toast('Could not open local storage (private mode?).'); });
+initTopBars();          // Close / Back / Save live in a sticky bar at the TOP of every sheet (bottom = behind phone nav buttons)
 initFolders({ importFiles, refresh, getRoms: () => db.allRoms(), toast, report: reportImport });
 
 /* ---------- physical controllers: connect toasts + library navigation ---------- */

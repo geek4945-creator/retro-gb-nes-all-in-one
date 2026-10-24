@@ -27,8 +27,8 @@ export const PAD_DEFAULTS = {
 };
 // Desktop keyboard defaults (player 1 only)
 export const KB_DEFAULTS = {
-  retro: { 8: 'x', 0: 'z', 9: 's', 1: 'a', 10: 'q', 11: 'w', 12: 'e', 13: 'r', 2: 'backspace', 3: 'enter', 4: 'up arrow', 5: 'down arrow', 6: 'left arrow', 7: 'right arrow', 24: 'f5', 25: 'f9' },
-  ejs: { 0: 'x', 1: 's', 2: 'v', 3: 'enter', 4: 'up arrow', 5: 'down arrow', 6: 'left arrow', 7: 'right arrow', 8: 'z', 9: 'a', 10: 'q', 11: 'e', 12: 'tab', 13: 'r', 24: '1', 25: '2' },
+  retro: { 8: 'x', 0: 'z', 9: 's', 1: 'a', 10: 'q', 11: 'w', 12: 'e', 13: 'r', 2: 'backspace', 3: 'enter', 4: 'up arrow', 5: 'down arrow', 6: 'left arrow', 7: 'right arrow', 24: 'f5', 25: 'f9', 16: 'h', 17: 'f', 18: 'g', 19: 't', 20: 'l', 21: 'j', 22: 'k', 23: 'i' },
+  ejs: { 0: 'x', 1: 's', 2: 'v', 3: 'enter', 4: 'up arrow', 5: 'down arrow', 6: 'left arrow', 7: 'right arrow', 8: 'z', 9: 'a', 10: 'q', 11: 'e', 12: 'tab', 13: 'r', 24: '1', 25: '2', 16: 'h', 17: 'f', 18: 'g', 19: 't', 20: 'l', 21: 'j', 22: 'k', 23: 'i' },
 };
 
 export const DEFAULT_PAD = { layout: 'nintendo', deadzone: 0.15, hideTouch: true, hotkeys: true, keyboard: true, kbPreset: 'retro', stickAsDpad: true, map: {}, assign: {} };
@@ -93,8 +93,17 @@ export function installShim(getSettings, getSystem) {
   window.__rpShim = true; window.__rpRawGamepads = navigator.getGamepads.bind(navigator);
   navigator.getGamepads = function () {
     const s = getSettings(), sys = getSystem();
-    return Array.from(window.__rpRawGamepads() || []).map((g) => (g ? transform(g, s, sys) : g));
+    return Array.from(window.__rpRawGamepads() || []).map((g) => (g ? swallowed(transform(g, s, sys)) : g));
   };
+}
+/* Buttons that must not reach the game (e.g. the A / Start press that started it): hidden until physically released. */
+export function swallow(index, list) { (window.__rpSwallow = window.__rpSwallow || new Map()).set(index, new Set(list)); }
+function swallowed(t) {
+  const w = window.__rpSwallow && window.__rpSwallow.get(t.index); if (!w) return t;
+  let held = false;
+  for (const i of w) if (t.buttons[i] && t.buttons[i].pressed) { held = true; t.buttons[i] = { pressed: false, touched: false, value: 0 }; }
+  if (!held) window.__rpSwallow.delete(t.index);
+  return t;
 }
 
 /** Friendly name from a Gamepad id string. */

@@ -3,6 +3,6 @@
   "appName": "Retro Pocket",
   "webDir": "www",
   "backgroundColor": "#0e0f14",
-  "android": { "allowMixedContent": false },
+  "android": { "allowMixedContent": false, "adjustMarginsForEdgeToEdge": "auto" },
   "server": { "androidScheme": "https" }
 }

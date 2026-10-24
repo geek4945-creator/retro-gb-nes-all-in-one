@@ -57,13 +57,14 @@ export function editLayout(emu, sys, sysLabel) {
     const parent = emu.virtualGamepad, wasHidden = parent.style.display === 'none';
     parent.style.display = ''; parent.style.opacity = '1'; parent.classList.add('tl-editing');
     const ov = document.createElement('div'); ov.id = 'tl-editor';
-    ov.innerHTML = `<div id="tl-bar"><b>Touch layout · ${sysLabel}</b><span id="tl-sel">Drag a control to move it. Tap one to resize it.</span>
+    ov.innerHTML = `<div id="tl-bar"><div class="tl-row tl-top"><button id="tl-move" type="button" title="Shrink this panel to see the controls under it">▴ Hide</button><button id="tl-reset" type="button">Reset</button><button id="tl-done" type="button" class="primary">Done</button></div>
+      <div class="tl-more"><b>Touch layout · ${sysLabel}</b><span id="tl-sel">Drag a control to move it. Tap one to resize it.</span>
       <label>Size <input id="tl-size" type="range" min="50" max="200" step="5" value="100" disabled><output id="tl-size-v">–</output></label>
       <label>All controls <input id="tl-scale" type="range" min="60" max="160" step="5"><output id="tl-scale-v"></output></label>
       <label>Opacity <input id="tl-opacity" type="range" min="10" max="100" step="5"><output id="tl-opacity-v"></output></label>
       <div class="tl-row"><select id="tl-preset"><option value="">Preset…</option>${Object.entries(PRESETS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
       <select id="tl-skin">${Object.entries(SKINS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
-      <div class="tl-row"><button id="tl-move" type="button" title="Move this panel">⇵ Panel</button><button id="tl-reset" type="button">Reset</button><button id="tl-done" type="button" class="primary">Done</button></div></div><div id="tl-hit"></div>`;
+      </div></div><div id="tl-hit"></div>`;
     document.body.append(ov);
     const $ = (s) => ov.querySelector(s);
     const outline = () => { for (const c of controls(parent)) c.el.classList.toggle('tl-selected', !!sel && c.id === sel); };
@@ -82,7 +83,9 @@ export function editLayout(emu, sys, sysLabel) {
     $('#tl-opacity').oninput = (e) => { layout.opacity = e.target.value / 100; save(); };
     $('#tl-skin').onchange = (e) => { layout.skin = e.target.value; save(); };
     $('#tl-preset').onchange = (e) => { if (!e.target.value) return; layout = presetLayout(e.target.value, layout); e.target.value = ''; sel = null; save(); };
-    $('#tl-move').onclick = () => $('#tl-bar').classList.toggle('tl-bottom');
+    // Done / Reset stay at the TOP (inside the safe area) — the panel collapses instead of moving to the bottom,
+    // where Android navigation buttons and the iPhone home indicator would cover it.
+    $('#tl-move').onclick = () => { const m = $('#tl-bar').classList.toggle('tl-min'); $('#tl-move').textContent = m ? '▾ Show' : '▴ Hide'; };
     $('#tl-reset').onclick = () => { resetLayout(sys); layout = loadLayout(sys); sel = null; sync(); };
     $('#tl-done').onclick = () => { saveLayout(sys, layout); for (const c of controls(parent)) c.el.classList.remove('tl-selected'); ov.remove(); parent.classList.remove('tl-editing'); if (wasHidden) parent.style.display = 'none'; resolve(layout); };
     const hit = $('#tl-hit');

@@ -13,6 +13,12 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Android 15+ draws apps edge-to-edge: capacitor.config.json "adjustMarginsForEdgeToEdge": "auto" keeps the
+             WebView clear of the status bar / navigation buttons; these colour the strips behind them to match the app. -->
+        <item name="android:windowBackground">@color/rpBackground</item>
+        <item name="android:statusBarColor">@color/rpBackground</item>
+        <item name="android:navigationBarColor">@color/rpBackground</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
 

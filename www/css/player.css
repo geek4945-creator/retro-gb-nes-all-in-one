@@ -8,6 +8,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 #banner { position: fixed; z-index: 11; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 48px); background: #2b2f44; color: #fff; padding: 10px 14px; border-radius: 12px; font: 14px system-ui, -apple-system, sans-serif; text-align: center; }
 #crash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(8,8,14,.94); padding: 20px; touch-action: auto; }
 #crash[hidden], #banner[hidden] { display: none; }
+/* info banner never blocks taps; before the game starts it sits below the top ▶ Start game button and its hint */
+#banner { pointer-events: none; }
+body:has(.ejs_start_button) #banner { top: calc(max(8px, env(safe-area-inset-top)) + 172px); }
 .crash-box { width: min(100%, 420px); color: #eceef7; font-family: system-ui, -apple-system, sans-serif; }
 .crash-box h2 { margin: 0 0 6px; color: #ff7b8a; } .crash-box p { margin: 6px 0 14px; }
 .crash-box .detail { font: 12px ui-monospace, Menlo, monospace; color: #8c91a8; word-break: break-word; }
@@ -26,13 +29,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; } .pm-grid button[hidden] { display: none; }
 .crash-box .pm-grid button { margin-top: 0; padding: 12px 8px; font-size: 14px; }
 #pmenu { overflow-y: auto; align-items: start; padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); } #pmenu .crash-box { margin: auto 0; }
-#pmpanel { position: fixed; inset: 0; z-index: 95; background: rgba(8,8,14,.96); display: flex; flex-direction: column; touch-action: auto; padding: max(10px, env(safe-area-inset-top)) 12px 12px; } #pmpanel[hidden] { display: none; }
+#pmpanel { position: fixed; inset: 0; z-index: 95; background: rgba(8,8,14,.96); display: flex; flex-direction: column; touch-action: auto; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); } #pmpanel[hidden] { display: none; }
 .pmpanel-bar { display: flex; align-items: center; gap: 12px; color: #eceef7; font: 16px system-ui, sans-serif; } .pmpanel-bar button { padding: 10px 14px; border-radius: 12px; border: 1px solid #2a2e40; background: #1f2230; color: #fff; font-size: 15px; font-weight: 600; }
 #pmpanel-body { flex: 1; overflow: auto; margin-top: 10px; -webkit-overflow-scrolling: touch; }
 #pmpanel-body .ejs_settings_parent { position: static !important; bottom: auto; margin: 0; max-width: 100%; white-space: normal; animation: none; z-index: auto; } #pmpanel-body .ejs_settings_parent::before, #pmpanel-body .ejs_settings_parent::after { display: none; }
 #pmpanel-body #ejs_disksMenu, #pmpanel-body .ejs_disks_parent { position: static !important; }
 #ptoast { position: fixed; z-index: 12; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 50px); background: #2b2f44; color: #fff; padding: 8px 14px; border-radius: 12px; font: 14px system-ui, sans-serif; pointer-events: none; }
-#pmenu { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(8,8,14,.85); padding: 20px; touch-action: auto; }
+#pmenu { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(8,8,14,.85); padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); touch-action: auto; }
 #ptoast[hidden], #pmenu[hidden] { display: none; }
 #pmenu h2 { margin: 0 0 6px; color: #eceef7; } #pmenu .hint { font-size: 12px; color: #8c91a8; margin-top: 14px; }
 .pad-focus { outline: 3px solid #ffd54a !important; outline-offset: 2px; }
@@ -93,7 +96,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 [data-rp-skin="neon"] .ejs_virtualGamepad_button { background-color: rgba(0,20,30,.35); border: 2px solid #19e6ff; color: #19e6ff; box-shadow: 0 0 10px rgba(25,230,255,.6), inset 0 0 8px rgba(25,230,255,.3); }
 [data-rp-skin="neon"] .ejs_dpad_bar { background: rgba(25,230,255,.35); box-shadow: 0 0 10px rgba(25,230,255,.6); }
 .tl-editing .ejs_virtualGamepad_button { transition: none !important; }
-#tl-bar.tl-bottom { top: auto; bottom: max(8px, env(safe-area-inset-bottom)); }
+#tl-bar .tl-more { display: flex; flex-direction: column; gap: 6px; } #tl-bar.tl-min .tl-more { display: none; }
 @media (max-height: 480px) { #tl-bar { gap: 3px; padding: 8px 10px; } #tl-bar select, #tl-bar button { padding: 6px; } }
 #quick { position: fixed; z-index: 10; top: max(6px, env(safe-area-inset-top)); display: flex; opacity: .55; transition: opacity .5s ease; } #quick[hidden] { display: none; }
 #quick button { width: 44px; height: 44px; padding: 0; margin: 0; border: 0; background: none; color: #fff; font: 600 15px system-ui, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; -webkit-user-select: none; } #quick button[hidden] { display: none; }
@@ -101,3 +104,17 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; oversc
 #quick button.on span { background: rgba(124,92,255,.85); border-color: #b9a8ff; }
 #quick[data-pos="right"] { right: calc(max(6px, env(safe-area-inset-right)) + 44px); flex-direction: row; } #quick[data-pos="left"] { left: calc(max(6px, env(safe-area-inset-left)) + 44px); } #quick[data-pos="center"] { left: calc(50% + 22px); }
 #quick.awake { opacity: .9; } #quick.faded { opacity: .14; }
+
+/* EmulatorJS' "Start Game" button: at the TOP inside the safe area (its default spot near the bottom edge sits under Android nav buttons / the iPhone home indicator) */
+.ejs_start_button { position: absolute !important; top: calc(max(8px, env(safe-area-inset-top)) + 58px) !important; bottom: auto !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 20; }
+#start-hint { position: fixed; z-index: 21; left: 50%; transform: translateX(-50%); top: calc(max(8px, env(safe-area-inset-top)) + 114px); width: min(92vw, 420px); text-align: center; color: #cfd0e6; background: rgba(20,20,30,.7); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 8px 12px; font: 13px/1.35 system-ui, -apple-system, sans-serif; pointer-events: none; }
+#start-hint[hidden] { display: none; }
+/* EmulatorJS popups (control settings, cheats, netplay, cache…): title and Close / Save buttons at the TOP, body below */
+.ejs_popup_container:has(> h4) { display: flex; flex-flow: row wrap; align-content: flex-start; justify-content: center; padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); touch-action: auto; }
+.ejs_popup_container:has(> h4) > h4 { order: 0; flex: 0 0 100%; }
+.ejs_popup_container:has(> h4) > .ejs_button { order: 1; margin: 0 6px 8px; padding: .6rem 1.1rem; font-size: 15px; }
+.ejs_popup_container:has(> h4) > div:not(.ejs_popup_body) { order: 2; flex: 0 0 100%; padding-top: 0 !important; }
+.ejs_popup_container:has(> h4) > .ejs_popup_body { order: 3; flex: 0 0 100%; height: auto; max-height: none; flex-basis: 100%; overflow: auto; }
+.ejs_popup_container:has(> h4) > .ejs_popup_body { height: calc(100% - 110px); }
+/* while one is open, our ☰ / quick buttons stay out of the way of its top buttons */
+body.rp-popup #menu-btn, body.rp-popup #quick, body.rp-popup #back { visibility: hidden; }

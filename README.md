@@ -295,6 +295,38 @@ Analog sticks can be moved but not resized.
 - **Switch core per game:** in the library, tap a game's **⋯** and pick **Core**. If a core crashes right at start, the player also falls back to the other core automatically.
 - **📝 Compatibility note:** in the same sheet you can write a short note for each game, such as "works best on melonDS". It appears in the in-game ☰ menu and is included in Backup.
 
+## ⚡ Performance & device, top-of-screen buttons, controller start
+
+**Buttons at the top.** Phones with on-screen navigation buttons (and Android 15 edge-to-edge) could hide the bottom row, so every Close / Save / Done button is now at the **top**, inside the safe area:
+- EmulatorJS pop-ups (Control Settings, Cheats, Netplay…): the title and buttons come first and the content scrolls below. While a pop-up is open, our ☰ / quick buttons hide so they can't cover it.
+- Touch layout editor: **▴ Hide / Reset / Done** make up the first row. *Hide* collapses the panel so you can see the controls you're moving.
+- Settings, Performance, the game sheet and other dialogs have a sticky top bar with **Close** / **‹ Back**. Toasts and the update banner also show at the top.
+
+**Settings → ⚡ Performance & device…** shows:
+- the phone, chipset (Android 12+, from the APK's native plugin), Android version, RAM, CPU cores, GPU, WebGL2, screen and refresh rate;
+- a 1-second **benchmark**;
+- the graphics mode: **Auto / Fast / Balanced / Best**. Auto explains its pick (for example "8 CPU cores, 8 GB RAM, fast GPU (Adreno 740)"). Running the benchmark feeds into Auto; you can override it.
+
+Each game's ⋯ sheet has a **Graphics** select that overrides the global mode for that game. Precedence: the game's select, then Settings, then Auto. Anything you change yourself in a game's EmulatorJS menu still wins.
+
+| Option | Fast | Balanced | Best |
+|---|---|---|---|
+| N64 (mupen64plus_next) resolution | 320×240 | 640×480 | 960×720 |
+| N64 frame duping | on | off | off |
+| N64 (parallel_n64) resolution | 320×240 | 640×480 | 640×480 |
+| PS1 (pcsx_rearmed) frameskip | auto | off | off |
+| PS1 (beetle) internal resolution | 1× | 1× | 2× |
+| PSP (ppsspp) internal resolution | 480×272 | 480×272 | 960×544 |
+| PSP auto / fixed frameskip | on / 1 | off | off |
+| Default screen filter | off | off | CRT (TV consoles), LCD (handhelds) |
+| Default rewind | off | light systems | light systems |
+
+The DS core (DeSmuME 2015) has no speed options in EmulatorJS 4.2.3, so presets leave DS alone. On iPhone / iPad (PWA), Auto picks Balanced at most.
+
+**N64 / analog sticks.** Controllers → *Invert stick X / Y* per system. These flips are applied on top of your custom mappings. With a keyboard, T F G H moves the left stick and I J K L moves the right stick (the N64 C-buttons). The touch stick no longer drops "right" at exactly 0°.
+
+**Start the game with a controller.** The **▶ Start game** button and the hint **"Press A / Start on your controller"** are at the top of the screen. Pressing A or Start on a Bluetooth/USB pad (or Enter / Space on a keyboard) starts the game, same as a tap. That counts as a user gesture, so iOS audio unlocks. The press that starts the game is swallowed until you release it, so it doesn't also press A in the game.
+
 ## 🧩 Adding games for many systems
 
 * **Detection:** unique extensions pick the system directly (`.nes`, `.gba`, `.z64`, `.md`, `.sms`, `.a26`, `.pce`, `.ws`, …). For `.bin`/`.iso`/`.cue`/`.chd`/`.zip`/`.7z`/`.img`/`.m3u`/`.pbp`/`.tap`/`.tzx`/`.exe`/`.rom`/`.ccd`, Retro Pocket first **sniffs the content** (iNES / N64 / GBA / Game Boy / Mega Drive / 32X / Master System / Game Gear / Atari 7800 / Lynx headers, `PLAYSTATION` / `SEGADISCSYSTEM` / `SEGASATURN` / PC-FX / 3DO / CD-i disc signatures, and the file names inside a `.zip`). If that is not conclusive you get a **Which system is this?** picker listing the plausible systems first (likely one highlighted) and a *Show all systems…* list. You can change a game's system later in its ⋯ menu.

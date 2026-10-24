@@ -18,7 +18,7 @@ try {
   const page = await browser.newPage(); const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => logs.push(m.text()));
   await page.setViewport({ width: 844, height: 390, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await page.goto(base + 'index.html', { waitUntil: 'networkidle0' });
-  await page.evaluate(async (b) => { const db = await import('./js/db.js'); await db.putRom({ id: 't1', file: 'nes-test.nes', title: 'NES Test', system: 'nes', core: 'nestopia', size: b.length, added: 1, lastPlayed: 0, data: new Uint8Array(b).buffer }); }, [...rom]);
+  await page.evaluate(async (b) => { const db = await import('./js/db.js'); localStorage.setItem('rp.perf', JSON.stringify({ mode: 'balanced' })); /* headless SwiftShader makes Auto pick Fast (rewind off); these tests cover the Balanced defaults */ await db.putRom({ id: 't1', file: 'nes-test.nes', title: 'NES Test', system: 'nes', core: 'nestopia', size: b.length, added: 1, lastPlayed: 0, data: new Uint8Array(b).buffer }); }, [...rom]);
   const boot = async () => {
     await page.goto(`${base}player.html?id=t1`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.ejs_start_button', { visible: true, timeout: 120000 }); await page.tap('.ejs_start_button');

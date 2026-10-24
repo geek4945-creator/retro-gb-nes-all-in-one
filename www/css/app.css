@@ -33,21 +33,29 @@ main { padding: 0 16px; max-width: 980px; margin: 0 auto; }
 .empty { text-align: center; padding: 56px 12px; color: var(--muted); } .empty h2 { color: var(--text); margin: 8px 0; }
 .empty-art { font-size: 56px; } code { background: var(--panel2); padding: 1px 6px; border-radius: 6px; font-size: 13px; color: var(--text); }
 .muted { color: var(--muted); } .small { font-size: 12px; } .center { text-align: center; grid-column: 1 / -1; }
-.fab { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 18px); background: var(--accent); color: #fff; font-weight: 700; padding: 14px 26px; border-radius: 999px; box-shadow: 0 8px 24px rgba(124,92,255,.45); cursor: pointer; user-select: none; }
+.fab { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(max(var(--sab), 0px) + 22px); background: var(--accent); color: #fff; font-weight: 700; padding: 14px 26px; border-radius: 999px; box-shadow: 0 8px 24px rgba(124,92,255,.45); cursor: pointer; user-select: none; }
 .fab:active { filter: brightness(.9); }
-dialog.sheet { border: 0; padding: 18px 16px calc(var(--sab) + 16px); background: var(--panel); color: var(--text); width: min(100%, 520px); max-width: 100%; margin: auto auto 0; border-radius: 20px 20px 0 0; }
+/* sheets hang from the TOP edge (the bottom edge is covered by Android nav buttons / the iPhone home indicator) */
+dialog.sheet { border: 0; padding: 0 16px 16px; background: var(--panel); color: var(--text); width: min(100%, 520px); max-width: 100%; margin: 0 auto auto; border-radius: 0 0 20px 20px; max-height: calc(100dvh - var(--sab) - 12px); overflow: auto; overscroll-behavior: contain; }
+dialog.sheet > :not(.sheet-top):first-child { margin-top: calc(var(--sat) + 16px); }
+.sheet-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; margin: 0 -16px 6px; padding: calc(var(--sat) + 10px) 16px 10px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.sheet-top .sheet-title { flex: 1; min-width: 0; margin: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-acts { display: flex; gap: 8px; margin-left: auto; flex: none; }
+.sheet-top .top-act { width: auto; margin: 0; padding: 9px 14px; font-size: 15px; border: 1px solid var(--line); color: var(--text); }
+.sheet-top .top-save { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
 dialog.sheet::backdrop { background: rgba(0,0,0,.6); }
 dialog.sheet h3 { margin: 0 0 4px; font-size: 18px; word-break: break-word; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 8px; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-size: 16px; text-align: left; }
 .row.primary { background: var(--accent); border-color: var(--accent); font-weight: 700; } .row.danger { color: var(--danger); } .row.ghost { background: none; justify-content: center; color: var(--muted); }
 .row select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px; font-size: 14px; max-width: 55%; }
-.toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 90px); background: #2b2f44; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; text-align: center; }
+.toast { position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); top: calc(var(--sat) + 64px); background: #2b2f44; border: 1px solid var(--line); padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; text-align: center; }
 .drop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(124,92,255,.35); font-size: 22px; font-weight: 700; border: 3px dashed #fff; }
 [hidden] { display: none !important; }
 
 dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%; max-height: 100%; background: var(--bg); color: var(--text); }
 .cv-main { padding: calc(var(--sat) + 14px) 14px calc(var(--sab) + 20px); max-width: 720px; margin: 0 auto; }
-.cv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .cv-head h3 { margin: 0; }
+.cv-acts { display: flex; gap: 8px; }
+.cv-head { position: sticky; top: 0; z-index: 2; background: var(--bg); margin: calc(-14px - var(--sat)) -14px 0; padding: calc(var(--sat) + 10px) 14px 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; } .cv-head h3 { margin: 0; }
 .cv-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
 .cv-row input[type=search], .cv-row input[type=url], .cv-keys input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 16px; width: 100%; }
 .btn { padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-size: 15px; font-weight: 600; }
@@ -100,7 +108,7 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .row:disabled { opacity: .55; }
 
 /* ---------- "update available" banner ---------- */
-#update-banner { position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 20px); display: flex; align-items: center; gap: 10px; background: #2b2f44; border: 1px solid var(--accent); color: var(--text); padding: 10px 12px; border-radius: 14px; font-size: 14px; max-width: 94%; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+#update-banner { position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); top: calc(var(--sat) + 60px); display: flex; align-items: center; gap: 10px; background: #2b2f44; border: 1px solid var(--accent); color: var(--text); padding: 10px 12px; border-radius: 14px; font-size: 14px; max-width: 94%; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
 #update-banner[hidden] { display: none; }
 #update-banner { width: min(94%, 460px); box-sizing: border-box; } #update-banner > span { flex: 1; min-width: 0; }
 #update-banner.error { border-color: #e0605a; }
@@ -116,7 +124,7 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .folder-info { min-width: 0; overflow-wrap: anywhere; }
 .folder-btns { display: flex; gap: 6px; flex-shrink: 0; }
 .warn-txt { color: #ffb347; }
-.scan-progress { position: fixed; left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 40; background: #1b1e29; border: 1px solid #333a50; border-radius: 12px; padding: 8px 12px; font-size: 13px; box-shadow: 0 6px 20px #0008; }
+.scan-progress { position: fixed; left: 12px; right: 12px; top: calc(var(--sat) + 116px); z-index: 40; background: #1b1e29; border: 1px solid #333a50; border-radius: 12px; padding: 8px 12px; font-size: 13px; box-shadow: 0 6px 20px #0008; }
 .scan-progress span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
 .scan-progress b { display: block; height: 4px; background: #2a2f40; border-radius: 2px; overflow: hidden; }
 .scan-progress i { display: block; height: 100%; background: var(--accent, #4f7cff); transition: width .2s; }
@@ -136,3 +144,11 @@ dialog.full { border: 0; padding: 0; width: 100%; height: 100%; max-width: 100%;
 .col-row input[type=checkbox] { width: 20px; height: 20px; }
 .col-new { display: flex; gap: 8px; } .col-new input { flex: 1; min-width: 0; }
 #sheet .note, textarea.note { width: 100%; box-sizing: border-box; margin: 6px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid #2a2e40; background: #151823; color: #eceef7; font: 14px system-ui, sans-serif; resize: vertical; }
+
+.inv-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; } .inv-opts { display: flex; gap: 14px; } .inv-opt { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+#perf .perf-info { display: grid; gap: 4px; margin: 4px 0 10px; }
+#perf .perf-kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+#perf .perf-kv b { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+#perf .perf-mode { align-items: center; } #perf .perf-mode.on { outline: 2px solid var(--accent, #7c5cff); }
+#perf .perf-map { margin-top: 10px; font-size: 13px; } #perf .perf-map summary { cursor: pointer; padding: 8px 0; }

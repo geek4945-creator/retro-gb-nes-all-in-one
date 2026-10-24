@@ -1,5 +1,6 @@
 // Settings > Controllers: connected pads, player assignment, options (deadzone, layout, ...) and per-player button remapping.
-import { CONTROLS, PAD_DEFAULTS, KB_DEFAULTS, loadPad, savePad, rawPads, padName, padKey, prettyPad, captureNextInput, keyName, PAD_LABELS, PRETTY, assignPlayers } from './pads.js';
+import { CONTROLS, PAD_DEFAULTS, KB_DEFAULTS, loadPad, savePad, rawPads, padName, padKey, prettyPad, captureNextInput, keyName, PAD_LABELS, PRETTY, assignPlayers, ANALOG_SYSTEMS } from './pads.js';
+import { SYSTEMS } from './cores.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, props = {}, ...kids) => {
@@ -64,7 +65,15 @@ export function openControllers() {
     chk('Hide on-screen pad while a controller is connected', 'hideTouch', 'pad-hide'),
     chk('Hotkeys (Select+Start menu, Select+R1/L1 save/load)', 'hotkeys', 'pad-hotkeys'),
     chk('Keyboard controls (desktop)', 'keyboard', 'pad-kb'),
-    el('label', { className: 'row select' }, 'Keyboard preset', kbp));
+    el('label', { className: 'row select' }, 'Keyboard preset', kbp),
+    // per-system analog stick direction fix (keyboard + controller + on-screen stick; custom button maps untouched — stick.js)
+    ...ANALOG_SYSTEMS.map((sys) => {
+      const inv = (cfg.invert && cfg.invert[sys]) || {};
+      const box = (axis, label) => el('label', { className: 'inv-opt' }, el('input', { type: 'checkbox', id: `pad-inv-${sys}-${axis}`, checked: !!inv[axis],
+        onchange: (e) => { cfg.invert = { ...(cfg.invert || {}) }; cfg.invert[sys] = { ...(cfg.invert[sys] || {}), [axis]: e.target.checked }; save(); } }), ' ' + label);
+      return el('div', { className: 'row select inv-row' }, el('span', {}, `${SYSTEMS[sys].short || SYSTEMS[sys].label} left stick`), el('span', { className: 'inv-opts' }, box('x', 'Invert ←→'), box('y', 'Invert ↑↓')));
+    }),
+    el('p', { className: 'muted small', textContent: 'Keyboard stick: T / F / G / H = up / left / down / right, I / J / K / L = right stick (N64 C-buttons).' }));
 
   /* mapping table */
   const tabs = el('div', { className: 'chips', id: 'pad-tabs' });

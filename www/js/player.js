@@ -6,10 +6,13 @@ import { hardcoreOn, achievementsPanel } from './retroach.js';
 import { cheatsPanel, applyCheats, loadCheats } from './cheats.js';
 import { startSession, trackPlay, getNote } from './meta.js';
 import { applyLayout, editLayout } from './touchlayout.js';
-import { FILTERS, loadFilter, saveFilter, nextFilter, applyFilter, loadRewind, saveRewind, loadQuick, saveQuick, quickBar, RP_SHADERS } from './video.js';
+import { FILTERS, loadFilter, saveFilter, nextFilter, applyFilter, loadRewind, saveRewind, loadQuick, saveQuick, quickBar, RP_SHADERS, usePreset, startFilter } from './video.js';
+import { loadPerf, savePerf, effectivePreset, presetOptions, reconcileSaved, autoTier, deviceInfo, PRESETS } from './perf.js';
 let playTracker = null;
 import { buildBios } from './bios.js';
-import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS } from './pads.js';
+import { loadPad, buildControls, installShim, rawPads, assignPlayers, padName, MAX_PLAYERS, swallow } from './pads.js';
+import { trackAudio, initStartButton, resumeAllAudio, audioBlocked } from './startgame.js';
+import { patchNipple, wrapSimulateInput, loadInvert } from './stick.js';
 import { loadUi, saveUi, UI_POS } from './ingameui.js';
 import { startPadNav } from './padnav.js';
 
@@ -116,17 +119,27 @@ $('#back').addEventListener('click', async () => {
   await Promise.race([snapshot({ force: true }), new Promise((r) => setTimeout(r, 2500))]);
   location.href = 'index.html';
 });
+patchNipple();                      // before EmulatorJS loads: on-screen stick sent nothing when pushed straight right (stick.js)
+trackAudio();                       // before EmulatorJS loads: lets us resume the core's AudioContext after a controller start (iOS)
 function resumeAudio() {
   try { const a = emu().Module.AL.currentCtx.audioCtx; if (a && a.state !== 'running') a.resume(); } catch {}   // iOS suspends audio on background
+  resumeAllAudio();
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') snapshot({ force: true }); else { lastFrameAt = Date.now(); resumeAudio(); }
 });
 addEventListener('pagehide', () => snapshot({ force: true }));
 addEventListener('pointerdown', resumeAudio, { passive: true });
+addEventListener('touchend', resumeAudio, { passive: true });   // iOS unlocks audio on touchend
+addEventListener('keydown', resumeAudio, { passive: true });
 
 /* ---------- controllers ---------- */
 installShim(loadPad, () => rom && rom.system);      // must be in place before EmulatorJS starts polling navigator.getGamepads()
+initStartButton({ rawPads, swallow });
+// EmulatorJS popups (controls, cheats, netplay…) keep their Close / Save buttons at the top (player.css); hide our own
+// top-corner buttons while one is open so they never cover them.
+new MutationObserver(() => document.body.classList.toggle('rp-popup', [...document.querySelectorAll('.ejs_popup_container')].some((p) => p.isConnected && p.getClientRects().length > 0)))   // rendered (not display:none / [hidden] anywhere up the tree)
+  .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden'] });              // A / Start on a controller or Enter / Space starts the game like a tap (startgame.js)
 const ptoast = (msg) => { const t = $('#ptoast'); t.textContent = msg; t.hidden = false; clearTimeout(ptoast.t); ptoast.t = setTimeout(() => (t.hidden = true), 2600); };
 let padSig = '', touchOverride = false;
 
@@ -365,8 +378,18 @@ requestAnimationFrame(hotkeys);
   window.EJS_ready = () => { status.hidden = true; try { emu().rewindEnabled = !HARDCORE && loadRewind(rom.system); } catch {} };   // read by the GameManager when the game starts
   window.EJS_shaders = RP_SHADERS;   // our LCD grid next to EmulatorJS' built-in shaders
   window.EJS_defaultControls = buildControls(loadPad());
-  window.EJS_onGameStart = () => { started = true; try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } if (loadFilter(rom.system) !== 'off') applyFilter(emu(), loadFilter(rom.system)); quick.show(loadQuick()); }, 50); };
+  window.EJS_onGameStart = () => { started = true; try { let inv = loadInvert(rom.system); addEventListener('storage', () => { inv = loadInvert(rom.system); }); wrapSimulateInput(emu().gameManager, () => inv); } catch (e) { console.warn('stick invert', e); } if (window.__rpStartedBy === 'pad') setTimeout(() => { if (audioBlocked()) ptoast('🔇 Tap the screen once to turn the sound on'); }, 900); try { const m = emu().menu; m.open = m.toggle = () => {}; m.close(); } catch {} wake(); if (ds) { try { ds.startDsTouch(emu(), rom.core); addDsMenu(ds); } catch (e) { console.warn('DS touch failed', e); } } startedAt = Date.now(); lastFrameAt = Date.now(); status.hidden = true; if (!playTracker) { startSession(rom.id); playTracker = trackPlay(rom.id, running); } if (!HARDCORE && loadCheats(rom.id).some((c) => c.on)) setTimeout(() => { const n = applyCheats(emu().gameManager, rom.id); if (n) say(`🧪 ${n} cheat${n > 1 ? 's' : ''} active`); }, 300); padSig = ''; setTimeout(() => { applyControls(); syncPads({ announce: false }); try { applyLayout(emu(), rom.system); } catch (e) { console.warn('touch layout', e); } startFilter(emu(), rom.system, rom.id); quick.show(loadQuick()); }, 50); };
 
+  // Graphics preset (Settings → Performance & device; per-game choice in the game sheet wins; see perf.js)
+  try {
+    const perf = loadPerf();
+    if (perf.mode === 'auto' && !perf.auto) { perf.auto = { ...autoTier(await deviceInfo({ refresh: false })), at: Date.now() }; savePerf(perf); }
+    const eff = effectivePreset(rom.id, perf), popts = presetOptions(eff.preset);
+    reconcileSaved(rom.id, rom.title, popts);              // EmulatorJS' saved per-game values would otherwise hide a preset change
+    Object.assign(window.EJS_defaultOptions, popts); usePreset(eff.preset);
+    window.__rpPreset = { ...eff, options: popts };
+    console.info('[perf] preset', eff.preset, '(' + eff.source + ')', PRESETS[eff.preset] && PRESETS[eff.preset].short);
+  } catch (e) { console.warn('perf preset', e); }
   if (HARDCORE) Object.assign(window.EJS_defaultOptions, { rewindEnabled: 'disabled', 'slowMotion': 'disabled' });
   if (params.get('resume') === '1' && !HARDCORE) {
     const st = await db.getState(rom.id);
