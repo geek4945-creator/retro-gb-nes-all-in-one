@@ -1,6 +1,6 @@
 // Boot matrix: for every system (or KEYS=psx,n64,...), store a generated stub image in the library, launch the player with the
 // system's default core (ALT=1: also every alternate core) and record whether the core downloaded, initialised, accepted the file
-// and produced frames. Needs network access to cdn.emulatorjs.org. Output: tests/out/systems.json + a table.
+// and produced frames. EJS_DATA=<url> boots against another EmulatorJS build. Needs network access to cdn.emulatorjs.org. Output: tests/out/systems.json + a table.
 import puppeteer from 'puppeteer-core';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -19,6 +19,7 @@ const results = []; const TIMEOUT = Number(process.env.BOOT_TIMEOUT || 80000);
 async function run(key, core) {
   const t0 = Date.now(), m = man[key], rec = { key, core, label: SYSTEMS[key].label, heavy: !!SYSTEMS[key].heavy, status: 'FAIL', detail: '' };
   const page = await browser.newPage(); const errs = [];
+  if (process.env.EJS_DATA) await page.evaluateOnNewDocument((d) => { window.RP_EJS_DATA = d; }, process.env.EJS_DATA);   // e.g. EJS_DATA=https://cdn.emulatorjs.org/4.3.0-pre/data/ to try another EmulatorJS build
   page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (c) => { if (c.type() === 'error' && !/Failed to load resource|favicon/.test(c.text())) errs.push(c.text()); });
   try {
     await page.goto(base + 'index.html', { waitUntil: 'domcontentloaded' });
@@ -58,9 +59,10 @@ async function run(key, core) {
     }
     if (rec.status === 'FAIL' && !rec.detail) rec.detail = 'timeout waiting for start (' + phase + ')';
     rec.threads = await page.evaluate(() => !!window.EJS_threads).catch(() => null);
+    rec.ejs = await page.evaluate(() => (window.EJS_emulator && EJS_emulator.ejs_version) || '').catch(() => '');
     if (process.env.SHOT) await page.screenshot({ path: `tests/out/sys-${key}-${core}.png` }).catch(() => {});
   } catch (e) { rec.detail = e.message.slice(0, 160); }
-  rec.errors = errs.slice(0, 2).map((x) => x.slice(0, 140)); rec.ms = Date.now() - t0;
+  rec.errors = errs.slice(0, 2).map((x) => String(x ?? '').slice(0, 140)); rec.ms = Date.now() - t0;
   await page.close().catch(() => {});
   return rec;
 }
@@ -69,7 +71,7 @@ try {
     const cores = process.env.ALT ? SYSTEMS[k].cores : [SYSTEMS[k].cores[0]];
     for (const c of cores) {
       const r = await run(k, c); results.push(r);
-      console.log(`${r.status.padEnd(8)} ${k.padEnd(8)} ${c.padEnd(18)} ${String(r.ms / 1000).slice(0, 5).padStart(5)}s  iso=${r.isolated} thr=${r.threads}  ${r.detail}${r.errors.length ? '  [' + r.errors[0] + ']' : ''}`);
+      console.log(`${r.status.padEnd(8)} ${k.padEnd(8)} ${c.padEnd(18)} ${String(r.ms / 1000).slice(0, 5).padStart(5)}s  iso=${r.isolated} thr=${r.threads} ejs=${r.ejs}  ${r.detail}${r.errors.length ? '  [' + r.errors[0] + ']' : ''}`);
       writeFileSync('tests/out/systems.json', JSON.stringify(results, null, 1));
     }
   }
